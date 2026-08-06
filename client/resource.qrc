@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/Resource">
+        <file>Resource/Icon/备份.png</file>
+        <file>Resource/Icon/擦除.png</file>
+        <file>Resource/Icon/导入.png</file>
+        <file>Resource/Icon/干扰样式编辑.png</file>
+        <file>Resource/Icon/恢复.png</file>
+        <file>Resource/Icon/加载.png</file>
+        <file>Resource/Icon/清屏-清空.png</file>
+        <file>Resource/Icon/通知.png</file>
+        <file>Resource/Icon/字典管理.png</file>
+        <file>Resource/Icon/通信.png</file>
+        <file>Resource/windowsXP.qss</file>
+        <file>Resource/TitleBarIcon/Titlebar_Close.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Close_Hover.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Max.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Max_Hover.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Min.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Min_Hover.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Normal.svg</file>
+        <file>Resource/TitleBarIcon/Titlebar_Normal_Hover.svg</file>
+    </qresource>
+</RCC>

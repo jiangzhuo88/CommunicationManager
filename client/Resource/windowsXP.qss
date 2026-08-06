@@ -1,0 +1,124 @@
+QWidget#ribbonBar{
+    background:qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                               stop:0 #DFE8F5,
+                               stop:0.2 #D1DFF0,
+                               stop:0.21 #C7D8ED,
+                               stop:1 #E3F4FF);
+                               border-radius:6px;
+}
+QWidget#tabBarWidget{
+    background-color:#BFDBFF;
+}
+/* ========== 1. 隐藏QTabWidget原生边框和分割线 ========== */
+QTabWidget {
+    background-color: transparent;
+}
+
+QTabWidget::pane {
+    border: 1px solid #b8cfe8;
+    background:qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                               stop:0 #DFE8F5,
+                               stop:0.03 #D1DFF0,
+                               stop:0.031 #C7D8ED,
+                               stop:1 #E3F4FF);
+                               border-radius:6px;
+    margin: 0px; /* 取消标签和内容区的间距 */
+    margin-right:2px;
+    margin-left:2px;
+    top:-1px;
+    border-top:1px solid #b8cfe8;
+    border-radius:6px;
+}
+
+/* ========== 2. 自定义TabBar背景（和你的Ribbon渐变完全一致） ========== */
+QTabBar {
+    background: transparent;
+    border:0px;
+    border-bottom: 1px solid #b8cfe8;
+    padding: 0px;
+    border-radius:6px;
+}
+
+/* ========== 3. 自定义单个Tab标签（关键！实现一体化效果） ========== */
+QTabBar::tab {
+    /* 背景：选中时白色，未选中时透明（露出背景栏渐变） */
+    background-color: transparent;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    min-height: 30px;
+    padding-bottom:8px;
+
+}
+
+/* 选中状态：标签变白色，视觉上“融入”下方内容区 */
+QTabBar::tab:selected {
+   padding: 6px 16px;
+    margin-left: 6px;
+    border: 1px solid #b8cfe8;
+    border-bottom:0px;
+    background-color: #DFE8F5;
+    border-color: #a8c7e8;
+
+}
+
+/* 未选中hover状态：轻微高亮，不破坏整体感 */
+QTabBar::tab:hover:!selected {
+    background-color: rgba(255,255,255, 0.3);
+}
+
+ZToolButton#tabAction{
+    background: transparent;
+    border: none;
+    padding: 4px;
+}
+ZToolButton#tabAction:hover {
+    background-color: #a8c7e8;
+}
+ZToolButton#tabAction:pressed {
+    background-color: #7fb3e0;
+}
+QFrame#category{
+    border: 1px solid #BACAD9;
+    border-radius:6px;
+}
+QLabel#categoryLabel{
+    background-color:#C1D9F1;
+    border: none;
+    border-radius:0px;
+}
+CFramelessWindowBase{
+    background-color: #ffffff;
+    border: 1px solid #b0b0b0;
+}
+QWidget#TitleBar{
+    background-color: #f6f7f9;
+    border-bottom: 1px solid #dcdcdc;
+}
+QPushButton#btnMin,
+QPushButton#btnMax,
+QPushButton#btnClose,
+QPushButton#btnNomal{
+    background: transparent;
+    border:0px;
+    padding: 6px;
+}
+QPushButton#btnMin:hover,
+QPushButton#btnMax:hover,
+QPushButton#btnClose:hover,
+QPushButton#btnNomal:hover{
+    background-color: #e5e6e8;
+    border-radius:4px;
+}
+QPushButton#btnMin{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Min.svg);
+}
+QPushButton#btnMax{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Max.svg);
+}
+QPushButton#btnClose{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Close.svg);
+}
+QPushButton#btnNomal{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Normal.svg);
+    }
+

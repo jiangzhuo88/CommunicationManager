@@ -1,0 +1,15 @@
+/* 全局基础样式 */
+SARibbonMainWindow {
+    background:#FFFFFF;
+    border:1px solid #C3C3C3;
+}
+
+SARibbonBar {
+    background:#FFFFFF;
+}
+SARibbonTabBar {
+    background:#BFDBFF;
+}
+SARibbonCategory {
+background:#FFFFFF;
+}
