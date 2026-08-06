@@ -6,8 +6,7 @@
 #include <QDebug>
 #include <QStyle>
 #include <QApplication>
-#include <QScreen>
-#include <QGuiApplication>
+#include <QDesktopWidget>
 
 CFramelessWindowBase::CFramelessWindowBase(QWidget *parent)
     : QWidget(parent)
@@ -217,7 +216,8 @@ void CFramelessWindowBase::slotMaxRestore()
     } else {
         // 最大化：保存当前几何，设置为屏幕大小
         m_normalGeometry = top->geometry();
-        QRect screenRect = top->screen()->availableGeometry();
+        // 使用 QDesktopWidget 兼容旧版 Qt（< 5.14 无 QWidget::screen()）
+        QRect screenRect = QApplication::desktop()->availableGeometry(top);
         top->setGeometry(screenRect);
         m_btnMax->setObjectName("btnNomal");  // 与 QSS 中保持一致
         m_isMaximized = true;
