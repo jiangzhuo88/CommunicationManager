@@ -1,11 +1,17 @@
 #include "mainwindow.h"
+#include "UserManagementDialog.h"
 
 #include <QPushButton>
 #include <QLabel>
 #include <QHeaderView>
+#include <QAction>
+#include <QMenu>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    // 无边框窗口，需要在创建子控件前设置
+    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowMinMaxButtonsHint);
     initUi();
 }
 
@@ -66,23 +72,42 @@ void MainWindow::initUi()
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
 
-
-
-    tabWidget->addTab(m_ribbonBar,"Menu Function");
-
-    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowMinMaxButtonsHint);
+    // 自定义标题栏
     CFramelessWindowBase* CFrameless = new CFramelessWindowBase;
     CFrameless->setWindowTitleText("Communication Identify Manager Client");
     CFrameless->setWindowTitleIcon(QIcon(":/Resource/Resource/Icon/通信.png"));
     mainLayout->addWidget(CFrameless);
-    // 顶部Ribbon
-    mainLayout->addWidget(tabWidget);
 
+    // 菜单栏（用户管理）
+    initMenuBar();
+    mainLayout->addWidget(m_menuBar);
+
+    // 顶部Ribbon
+    tabWidget->addTab(m_ribbonBar,"Menu Function");
+    mainLayout->addWidget(tabWidget);
 
     m_centralWidget = new CenterWidget;
     m_centralWidget->setObjectName("centralWidget");
     mainLayout->addWidget(m_centralWidget,1);
     setCentralWidget(tabBarWidget);
+
+    // 安装边框缩放处理器（必须在标题栏被添加到布局后调用）
+    CFrameless->installFramelessHandler();
+}
+
+void MainWindow::initMenuBar()
+{
+    m_menuBar = new QMenuBar(this);
+    m_menuBar->setObjectName("appMenuBar");
+
+    QMenu* userMenu = m_menuBar->addMenu("用户管理");
+    QAction* actAddUser = userMenu->addAction("添加用户");
+    QAction* actDelUser = userMenu->addAction("删除用户");
+    QAction* actUserList = userMenu->addAction("用户列表");
+
+    connect(actAddUser, &QAction::triggered, this, &MainWindow::slotAddUser);
+    connect(actDelUser, &QAction::triggered, this, &MainWindow::slotDeleteUser);
+    connect(actUserList, &QAction::triggered, this, &MainWindow::slotUserList);
 }
 
 // 创建Ribbon按钮（带图标+文字，和截图样式一致）
@@ -125,4 +150,22 @@ QFrame* MainWindow::createRibbonGroup(const QString &title, const QList<ZToolBut
     groupLayout->addWidget(labelTitle);
 
     return group;
+}
+
+void MainWindow::slotAddUser()
+{
+    UserManagementDialog dlg(this);
+    dlg.exec();
+}
+
+void MainWindow::slotDeleteUser()
+{
+    UserManagementDialog dlg(this);
+    dlg.exec();
+}
+
+void MainWindow::slotUserList()
+{
+    UserManagementDialog dlg(this);
+    dlg.exec();
 }

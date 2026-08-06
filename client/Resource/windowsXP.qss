@@ -122,3 +122,121 @@ QPushButton#btnNomal{
     image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Normal.svg);
     }
 
+/* ========== 菜单栏 ========== */
+QMenuBar#appMenuBar{
+    background-color: #DFE8F5;
+    border-bottom: 1px solid #b8cfe8;
+    spacing: 2px;
+}
+QMenuBar#appMenuBar::item{
+    background: transparent;
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+QMenuBar#appMenuBar::item:selected{
+    background-color: #a8c7e8;
+}
+QMenuBar#appMenuBar::item:pressed{
+    background-color: #7fb3e0;
+}
+QMenu{
+    background-color: #ffffff;
+    border: 1px solid #b8cfe8;
+    border-radius: 4px;
+    padding: 4px;
+}
+QMenu::item{
+    padding: 6px 24px;
+    border-radius: 4px;
+}
+QMenu::item:selected{
+    background-color: #DFE8F5;
+}
+
+/* ========== 登录/用户管理对话框 ========== */
+QDialog#loginDialog,
+QDialog#userMgmtDialog{
+    background-color: #ffffff;
+    border: 1px solid #b0b0b0;
+    border-radius: 6px;
+}
+QWidget#loginTitleBar{
+    background-color: #f6f7f9;
+    border-bottom: 1px solid #dcdcdc;
+}
+QFrame#loginFormFrame{
+    background-color: #ffffff;
+}
+QLineEdit{
+    border: 1px solid #c4d0dc;
+    border-radius: 4px;
+    padding: 2px 6px;
+    background-color: #ffffff;
+    selection-background-color: #a8c7e8;
+}
+QLineEdit:focus{
+    border: 1px solid #7fb3e0;
+}
+QComboBox{
+    border: 1px solid #c4d0dc;
+    border-radius: 4px;
+    padding: 2px 6px;
+    background-color: #ffffff;
+}
+QComboBox::drop-down{
+    border: 0px;
+    width: 20px;
+}
+QComboBox QAbstractItemView{
+    border: 1px solid #c4d0dc;
+    selection-background-color: #a8c7e8;
+    outline: 0;
+}
+QPushButton#loginBtn{
+    background-color: #4a90d9;
+    color: #ffffff;
+    border: 0px;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+QPushButton#loginBtn:hover{
+    background-color: #5ba0e9;
+}
+QPushButton#loginBtn:pressed{
+    background-color: #3a80c9;
+}
+QPushButton#loginCancelBtn{
+    background-color: #e5e6e8;
+    color: #333333;
+    border: 1px solid #c4d0dc;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+QPushButton#loginCancelBtn:hover{
+    background-color: #d5d6d8;
+}
+QPushButton#loginCancelBtn:pressed{
+    background-color: #c5c6c8;
+}
+
+/* ========== 表格 ========== */
+QTableWidget{
+    background-color: #ffffff;
+    alternate-background-color: #f5f8fc;
+    gridline-color: #e0e8f0;
+    border: 1px solid #c4d0dc;
+    border-radius: 4px;
+}
+QHeaderView::section{
+    background-color: #DFE8F5;
+    padding: 4px;
+    border: 0px;
+    border-right: 1px solid #c4d0dc;
+    border-bottom: 1px solid #c4d0dc;
+    font-weight: bold;
+}
+QTableWidget::item:selected{
+    background-color: #a8c7e8;
+    color: #000000;
+}
+

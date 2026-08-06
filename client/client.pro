@@ -27,18 +27,20 @@ SOURCES += \
     mainwindow.cpp \
     ZToolButton.cpp \
     CenterWidget.cpp \
-    CFramelessWindowBase.cpp
+    CFramelessWindowBase.cpp \
+    LoginDialog.cpp \
+    UserManagementDialog.cpp
 
 RESOURCES += \
     resource.qrc
 
 FORMS += \
-    mainwindow.ui \
-    ZToolButton.ui \
     CenterWidget.ui
 
 HEADERS += \
     mainwindow.h \
     ZToolButton.h \
     CenterWidget.h \
-    CFramelessWindowBase.h
+    CFramelessWindowBase.h \
+    LoginDialog.h \
+    UserManagementDialog.h

@@ -5,7 +5,6 @@
 #include <QPoint>
 #include <QLabel>
 #include <QPushButton>
-#include <QWidget>
 
 class CFramelessWindowBase : public QWidget
 {
@@ -18,21 +17,39 @@ public:
     void setWindowTitleText(const QString& text);
     void setWindowTitleIcon(const QIcon& icon, int size = 20);
 
+    // 在标题栏被添加到主窗口布局后调用，安装全局边框缩放处理器
+    void installFramelessHandler();
+
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
-    void leaveEvent(QEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
-    QWidget* getParentWidget();
+    QWidget* getTopWindow();
+    bool isDescendantOf(QWidget* w, QWidget* ancestor);
+
+    // 窗口缩放方向
+    enum ResizeDir
+    {
+        DIR_NONE=0,DIR_LEFT,DIR_RIGHT,DIR_TOP,DIR_BOTTOM,
+        DIR_TOPLEFT,DIR_TOPRIGHT,DIR_BOTTOMLEFT,DIR_BOTTOMRIGHT
+    };
+
+    ResizeDir getResizeDirection(const QPoint& posInTop, QWidget* top);
+    QCursor cursorForDir(ResizeDir dir);
+    void doResize(const QPoint& globalPos);
+    void updateMaxButtonIcon();
+
 private slots:
     void slotMin();
     void slotMaxRestore();
     void slotClose();
 
 private:
-    // 布局UI
-//    QWidget*     m_titleBar;
+    // 标题栏UI
     QLabel*      m_iconLab;
     QLabel*      m_titleLab;
     QPushButton* m_btnMin;
@@ -44,20 +61,15 @@ private:
     QPoint m_dragStartPos;
 
     // 窗口缩放
-    const int m_resizeMargin = 8;
-    enum ResizeDir
-    {
-        DIR_NONE=0,DIR_LEFT,DIR_RIGHT,DIR_TOP,DIR_BOTTOM,
-        DIR_TOPLEFT,DIR_TOPRIGHT,DIR_BOTTOMLEFT,DIR_BOTTOMRIGHT
-    };
-    ResizeDir m_resizeDir = DIR_NONE;
+    const int m_resizeMargin = 6;
     bool m_isResize = false;
+    ResizeDir m_resizeDir = DIR_NONE;
     QPoint m_mouseStartPos;
     QRect  m_winStartRect;
 
-    ResizeDir getResizeDirection(const QPoint& pos);
-    void setCursorByDir(ResizeDir dir);
-    bool isInTitleBar(const QPoint& pos);
+    // 最大化/还原
+    QRect m_normalGeometry;
+    bool m_isMaximized = false;
 };
 
 #endif // CFramelessWindowBase_H
