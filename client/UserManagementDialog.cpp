@@ -94,18 +94,18 @@ void UserManagementDialog::initUi()
 void UserManagementDialog::loadUsers()
 {
     // 初始用户列表
-    m_table->setRowCount(3);
+    m_table->setRowCount(1);
     m_table->setItem(0, 0, new QTableWidgetItem("admin"));
     m_table->setItem(0, 1, new QTableWidgetItem("管理员"));
     m_table->setItem(0, 2, new QTableWidgetItem("admin"));
 
-    m_table->setItem(1, 0, new QTableWidgetItem("user1"));
-    m_table->setItem(1, 1, new QTableWidgetItem("普通用户"));
-    m_table->setItem(1, 2, new QTableWidgetItem("123456"));
+//    m_table->setItem(1, 0, new QTableWidgetItem("user1"));
+//    m_table->setItem(1, 1, new QTableWidgetItem("普通用户"));
+//    m_table->setItem(1, 2, new QTableWidgetItem("123456"));
 
-    m_table->setItem(2, 0, new QTableWidgetItem("user2"));
-    m_table->setItem(2, 1, new QTableWidgetItem("普通用户"));
-    m_table->setItem(2, 2, new QTableWidgetItem("123456"));
+//    m_table->setItem(2, 0, new QTableWidgetItem("user2"));
+//    m_table->setItem(2, 1, new QTableWidgetItem("普通用户"));
+//    m_table->setItem(2, 2, new QTableWidgetItem("123456"));
 }
 
 void UserManagementDialog::slotAddUser()

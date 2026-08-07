@@ -10,7 +10,8 @@ QWidget#tabBarWidget{
     background-color:#BFDBFF;
 }
 /* ========== 1. 隐藏QTabWidget原生边框和分割线 ========== */
-QTabWidget {
+QTabWidget#mainTab,
+QTabWidget#tabWidgetLibrary{
     background-color: transparent;
 }
 
@@ -29,9 +30,24 @@ QTabWidget::pane {
     border-top:1px solid #b8cfe8;
     border-radius:6px;
 }
-
+QTabBar#centralTabWidgetBar::tab {
+    height: 30px;
+    Width:  80px;
+}
+/* 选中状态：标签变白色，视觉上“融入”下方内容区 */
+QTabBar#centralTabWidgetBar::tab{
+background-color: #DFE8F5;
+}
+/* 未选中hover状态：轻微高亮，不破坏整体感 */
+QTabBar#centralTabWidgetBar::tab:!selected{
+border: 1px solid #b8cfe8;
+background-color: #DFE8F5;
+background-color: rgba(255,255,255,100);
+border-color: #a8c7e8;
+}
 /* ========== 2. 自定义TabBar背景（和你的Ribbon渐变完全一致） ========== */
-QTabBar {
+QTabBar#mainTabBar,
+QTabBar#tabWidgetLibraryBar{
     background: transparent;
     border:0px;
     border-bottom: 1px solid #b8cfe8;
@@ -40,18 +56,20 @@ QTabBar {
 }
 
 /* ========== 3. 自定义单个Tab标签（关键！实现一体化效果） ========== */
-QTabBar::tab {
+QTabBar#mainTabBar::tab,
+QTabBar#tabWidgetLibraryBar::tab{
     /* 背景：选中时白色，未选中时透明（露出背景栏渐变） */
     background-color: transparent;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
-    min-height: 30px;
+    height: 30px;
     padding-bottom:8px;
 
 }
 
 /* 选中状态：标签变白色，视觉上“融入”下方内容区 */
-QTabBar::tab:selected {
+QTabBar#mainTabBar::tab:selected,
+QTabBar#tabWidgetLibraryBar::tab:selected{
    padding: 6px 16px;
     margin-left: 6px;
     border: 1px solid #b8cfe8;
@@ -62,7 +80,8 @@ QTabBar::tab:selected {
 }
 
 /* 未选中hover状态：轻微高亮，不破坏整体感 */
-QTabBar::tab:hover:!selected {
+QTabBar#mainTabBar::tab:hover:!selected,
+QTabBar#tabWidgetLibraryBar::tab:hover:!selected{
     background-color: rgba(255,255,255, 0.3);
 }
 
@@ -86,11 +105,28 @@ QLabel#categoryLabel{
     border: none;
     border-radius:0px;
 }
+
+QPushButton{
+background:qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                           stop:0 #E1ECF9,
+                           stop:0.4 #D0E0F4,
+                           stop:0.401 #BCD4F1,
+                           stop:1 #D3EBFB);
+   border: 1px solid #537AAC;
+   border-radius:3px;
+   min-height:25px;
+   min-Width:80px;
+}
+QPushButton:hover{
+   border: 1px solid #FFF3CC;
+}
 CFramelessWindowBase{
     background-color: #ffffff;
     border: 1px solid #b0b0b0;
 }
-QWidget#TitleBar{
+QWidget#DialogTitleBar{
+border-top-left-radius: 15px;
+border-top-right-radius: 15px;
     background-color: #f6f7f9;
     border-bottom: 1px solid #dcdcdc;
 }
@@ -101,13 +137,27 @@ QPushButton#btnNomal{
     background: transparent;
     border:0px;
     padding: 6px;
+    min-height:20px;
+    min-Width:20px;
+    border-radius:0px;
 }
 QPushButton#btnMin:hover,
 QPushButton#btnMax:hover,
 QPushButton#btnClose:hover,
 QPushButton#btnNomal:hover{
-    background-color: #e5e6e8;
-    border-radius:4px;
+    border: 0px;
+}
+QPushButton#btnMin:hover{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Min_Hover.svg);
+}
+QPushButton#btnMax:hover{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Max_Hover.svg);
+}
+QPushButton#btnClose:hover{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Close_Hover.svg);
+}
+QPushButton#btnNomal:hover{
+    image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Normal_Hover.svg);
 }
 QPushButton#btnMin{
     image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Min.svg);
@@ -120,39 +170,11 @@ QPushButton#btnClose{
 }
 QPushButton#btnNomal{
     image:url(:/Resource/Resource/TitleBarIcon/Titlebar_Normal.svg);
-    }
-
-/* ========== 菜单栏 ========== */
-QMenuBar#appMenuBar{
-    background-color: #DFE8F5;
-    border-bottom: 1px solid #b8cfe8;
-    spacing: 2px;
 }
-QMenuBar#appMenuBar::item{
-    background: transparent;
-    padding: 4px 12px;
-    border-radius: 4px;
+QDialog{
+    background-color: #bfdbff;
+    border-radius:15px;
 }
-QMenuBar#appMenuBar::item:selected{
-    background-color: #a8c7e8;
-}
-QMenuBar#appMenuBar::item:pressed{
-    background-color: #7fb3e0;
-}
-QMenu{
-    background-color: #ffffff;
-    border: 1px solid #b8cfe8;
-    border-radius: 4px;
-    padding: 4px;
-}
-QMenu::item{
-    padding: 6px 24px;
-    border-radius: 4px;
-}
-QMenu::item:selected{
-    background-color: #DFE8F5;
-}
-
 /* ========== 登录/用户管理对话框 ========== */
 QDialog#loginDialog,
 QDialog#userMgmtDialog{
@@ -165,78 +187,5 @@ QWidget#loginTitleBar{
     border-bottom: 1px solid #dcdcdc;
 }
 QFrame#loginFormFrame{
-    background-color: #ffffff;
+    background-color:#BFDBFF;
 }
-QLineEdit{
-    border: 1px solid #c4d0dc;
-    border-radius: 4px;
-    padding: 2px 6px;
-    background-color: #ffffff;
-    selection-background-color: #a8c7e8;
-}
-QLineEdit:focus{
-    border: 1px solid #7fb3e0;
-}
-QComboBox{
-    border: 1px solid #c4d0dc;
-    border-radius: 4px;
-    padding: 2px 6px;
-    background-color: #ffffff;
-}
-QComboBox::drop-down{
-    border: 0px;
-    width: 20px;
-}
-QComboBox QAbstractItemView{
-    border: 1px solid #c4d0dc;
-    selection-background-color: #a8c7e8;
-    outline: 0;
-}
-QPushButton#loginBtn{
-    background-color: #4a90d9;
-    color: #ffffff;
-    border: 0px;
-    border-radius: 4px;
-    padding: 4px 12px;
-}
-QPushButton#loginBtn:hover{
-    background-color: #5ba0e9;
-}
-QPushButton#loginBtn:pressed{
-    background-color: #3a80c9;
-}
-QPushButton#loginCancelBtn{
-    background-color: #e5e6e8;
-    color: #333333;
-    border: 1px solid #c4d0dc;
-    border-radius: 4px;
-    padding: 4px 12px;
-}
-QPushButton#loginCancelBtn:hover{
-    background-color: #d5d6d8;
-}
-QPushButton#loginCancelBtn:pressed{
-    background-color: #c5c6c8;
-}
-
-/* ========== 表格 ========== */
-QTableWidget{
-    background-color: #ffffff;
-    alternate-background-color: #f5f8fc;
-    gridline-color: #e0e8f0;
-    border: 1px solid #c4d0dc;
-    border-radius: 4px;
-}
-QHeaderView::section{
-    background-color: #DFE8F5;
-    padding: 4px;
-    border: 0px;
-    border-right: 1px solid #c4d0dc;
-    border-bottom: 1px solid #c4d0dc;
-    font-weight: bold;
-}
-QTableWidget::item:selected{
-    background-color: #a8c7e8;
-    color: #000000;
-}
-

@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QStyle>
 #include <QApplication>
+//#include <QScreen>
+//#include <QGuiApplication>
 #include <QDesktopWidget>
 
 CFramelessWindowBase::CFramelessWindowBase(QWidget *parent)
@@ -22,7 +24,7 @@ CFramelessWindowBase::CFramelessWindowBase(QWidget *parent)
 
     // 图标（设置鼠标穿透，使点击可以传递到标题栏以触发拖动/双击）
     m_iconLab = new QLabel;
-    m_iconLab->setFixedSize(20,20);
+    m_iconLab->setFixedSize(30,30);
     m_iconLab->setContentsMargins(10,0,0,0);
     m_iconLab->setAttribute(Qt::WA_TransparentForMouseEvents);
 
@@ -216,7 +218,7 @@ void CFramelessWindowBase::slotMaxRestore()
     } else {
         // 最大化：保存当前几何，设置为屏幕大小
         m_normalGeometry = top->geometry();
-        // 使用 QDesktopWidget 兼容旧版 Qt（< 5.14 无 QWidget::screen()）
+//        QRect screenRect = top->screen()->availableGeometry();
         QRect screenRect = QApplication::desktop()->availableGeometry(top);
         top->setGeometry(screenRect);
         m_btnMax->setObjectName("btnNomal");  // 与 QSS 中保持一致

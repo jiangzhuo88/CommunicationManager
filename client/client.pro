@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -22,25 +22,48 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 DESTDIR = $$PWD/../bin/
+# 中间产物输出到build目录
+OBJECTS_DIR = build
+MOC_DIR = build
+UI_DIR = build
+RCC_DIR = build
 SOURCES += \
+    LoginDialog.cpp \
+    TableEditDelegate.cpp \
+    UserManagementDialog.cpp \
+    dmdatabase.cpp \
+    ipc_notify.cpp \
+    localdatabase.cpp \
         main.cpp \
     mainwindow.cpp \
     ZToolButton.cpp \
     CenterWidget.cpp \
     CFramelessWindowBase.cpp \
-    LoginDialog.cpp \
-    UserManagementDialog.cpp
+    CDialogBase.cpp \
+    ImportDataDialog.cpp \
+    qt_ipcnotify.cpp
 
 RESOURCES += \
     resource.qrc
 
 FORMS += \
-    CenterWidget.ui
+    mainwindow.ui \
+    ZToolButton.ui \
+    CenterWidget.ui \
+    ImportDataDialog.ui
 
 HEADERS += \
+    LoginDialog.h \
+    TableEditDelegate.h \
+    UserManagementDialog.h \
+    define.h \
+    dmdatabase.h \
+    ipc_notify.h \
+    localdatabase.h \
     mainwindow.h \
     ZToolButton.h \
     CenterWidget.h \
     CFramelessWindowBase.h \
-    LoginDialog.h \
-    UserManagementDialog.h
+    CDialogBase.h \
+    ImportDataDialog.h \
+    qt_ipcnotify.h
