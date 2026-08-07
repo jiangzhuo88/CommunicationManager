@@ -79,8 +79,14 @@ void MainWindow::btnClearClicked()
 
 void MainWindow::btnUserManagerClicked()
 {
-    UserManagementDialog dlg(this);
+    UserManagementDialog dlg(m_currentUserName, m_currentRole, this);
     dlg.exec();
+}
+
+void MainWindow::setCurrentUser(const QString &userName, UserStore::Role role)
+{
+    m_currentUserName = userName;
+    m_currentRole     = role;
 }
 
 

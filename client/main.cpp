@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
         return 0;  // 用户取消登录，退出程序
     }
     MainWindow w;
+    w.setCurrentUser(loginDlg.userName(), loginDlg.role());
 //    w.setGraphicsEffect(effect);
 //    w.setDisabled(true);
     w.show();

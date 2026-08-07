@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QGuiApplication>
+#include <QMessageBox>
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -15,7 +16,7 @@ LoginDialog::LoginDialog(QWidget *parent)
     setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
     setAttribute(Qt::WA_StyledBackground);
     setObjectName("loginDialog");
-    setFixedSize(380, 280);
+    setFixedSize(380, 260);
 
     initUi();
 }
@@ -76,18 +77,11 @@ void LoginDialog::initUi()
     m_pwdEdit->setEchoMode(QLineEdit::Password);
     m_pwdEdit->setMinimumHeight(32);
 
-    // 角色（管理员/普通用户）
-    m_roleCombo = new QComboBox;
-    m_roleCombo->addItem("管理员", true);
-    m_roleCombo->addItem("普通用户", false);
-    m_roleCombo->setMinimumHeight(32);
-
     QFormLayout* form = new QFormLayout;
     form->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
     form->setSpacing(10);
     form->addRow("用户名:", m_userEdit);
     form->addRow("密  码:", m_pwdEdit);
-    form->addRow("角  色:", m_roleCombo);
     formLay->addLayout(form);
 
     // 按钮区
@@ -106,9 +100,11 @@ void LoginDialog::initUi()
 
     mainLay->addWidget(formFrame, 1);
 
-    // 默认账号提示
-    m_userEdit->setText("admin");
-    m_pwdEdit->setText("admin");
+    // 默认填充 admin/admin（首次启动 store 自动创建了该账号）
+    if (m_store.exists("admin")) {
+        m_userEdit->setText("admin");
+        m_pwdEdit->setText("admin");
+    }
 
     // 信号
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::reject);
@@ -119,19 +115,27 @@ void LoginDialog::initUi()
 
 QString LoginDialog::userName() const { return m_userEdit->text().trimmed(); }
 QString LoginDialog::password() const { return m_pwdEdit->text(); }
-bool LoginDialog::isAdmin() const { return m_roleCombo->currentData().toBool(); }
 
 void LoginDialog::slotLogin()
 {
-    // 简单校验：用户名和密码不能为空
     if (userName().isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入用户名");
         m_userEdit->setFocus();
         return;
     }
     if (password().isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入密码");
         m_pwdEdit->setFocus();
         return;
     }
+    UserStore::Role role = UserStore::RoleNormal;
+    if (!m_store.validate(userName(), password(), role)) {
+        QMessageBox::warning(this, "登录失败", "用户名或密码错误");
+        m_pwdEdit->clear();
+        m_pwdEdit->setFocus();
+        return;
+    }
+    m_role = role;
     accept();
 }
 

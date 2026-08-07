@@ -31,6 +31,7 @@ SOURCES += \
     LoginDialog.cpp \
     TableEditDelegate.cpp \
     UserManagementDialog.cpp \
+    UserStore.cpp \
     dmdatabase.cpp \
     ipc_notify.cpp \
     localdatabase.cpp \
@@ -56,6 +57,7 @@ HEADERS += \
     LoginDialog.h \
     TableEditDelegate.h \
     UserManagementDialog.h \
+    UserStore.h \
     define.h \
     dmdatabase.h \
     ipc_notify.h \

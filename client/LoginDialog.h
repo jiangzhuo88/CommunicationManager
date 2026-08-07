@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include "UserStore.h"
 
 class LoginDialog : public QDialog
 {
@@ -16,7 +17,8 @@ public:
     // 获取登录信息
     QString userName() const;
     QString password() const;
-    bool isAdmin() const;
+    // 当前登录用户角色（登录成功后有效）
+    UserStore::Role role() const { return m_role; }
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -41,9 +43,11 @@ private:
     QPushButton* m_btnClose;
     QLineEdit*   m_userEdit;
     QLineEdit*   m_pwdEdit;
-    QComboBox*   m_roleCombo;
     QPushButton* m_btnLogin;
     QPushButton* m_btnCancel;
+
+    UserStore    m_store;
+    UserStore::Role m_role = UserStore::RoleNormal;
 };
 
 #endif // LOGINDIALOG_H

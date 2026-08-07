@@ -15,11 +15,13 @@
 #include "localdatabase.h"
 #include "dmdatabase.h"
 #include "qt_ipcnotify.h"
+#include "UserStore.h"
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    void setCurrentUser(const QString& userName, UserStore::Role role);
 private slots:
     void btnImportClicked();
     void btnClearClicked();
@@ -71,6 +73,10 @@ private:
     // 数据库对象
     DmDatabase *m_dmDatabase;
     QtIpcNotify* ipc = nullptr;
+
+    // 当前登录用户
+    QString        m_currentUserName;
+    UserStore::Role m_currentRole = UserStore::RoleNormal;
 };
 
 #endif // MAINWINDOW_H
