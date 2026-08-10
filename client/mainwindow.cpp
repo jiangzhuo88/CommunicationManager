@@ -30,12 +30,18 @@ MainWindow::MainWindow(QWidget *parent)
     });
 }
 
+void MainWindow::setCurrentUser(const QString &userName, UserStore::Role role)
+{
+    m_currentUserName = userName;
+    m_currentRole     = role;
+}
+
 void MainWindow::btnImportClicked()
 {
 
 //    ImportDataDialog dlg(this);
 //    dlg.setWindowTitle("Import Data");
-//    //    dlg.resize(400,300);
+    //    dlg.resize(400,300);
 //    dialogExec(&dlg);
 
     if(QMessageBox::Yes != QMessageBox::question(this,"Hint","Data will tobe imported and covered,Are you continue?",QMessageBox::Yes,QMessageBox::No))
@@ -45,17 +51,35 @@ void MainWindow::btnImportClicked()
 
     QList<QMap<QString,QString>> dpList = loadDP();
     QList<QMap<QString,QString>> tpList = loadTP();
-
+    QList<QMap<QString,QString>> dpListTemp;
+    QList<QMap<QString,QString>> tpListTemp;
     for(QMap<QString,QString>& map : dpList)
     {
         QString str = map["Platform"];
         QMap<int,QStringList> MBMCMap = parseStrToMapList(str);
         map["PlatformMsg"] = MBMCMap[30].join(";");
         map["PlatformFeature"] = MBMCMap[156].join(";");
+        //本地数据库只保留筛选后的数据，不保存脏数据
+        if(dataIsValid("DP_MSG",map))
+        {
+            dpListTemp.push_back(map);
+        }
+    }
+    for(QMap<QString,QString>& map : tpList)
+    {
+        QString str = map["Platform"];
+        QMap<int,QStringList> MBMCMap = parseStrToMapList(str);
+        map["PlatformMsg"] = MBMCMap[30].join(";");
+        map["PlatformFeature"] = MBMCMap[156].join(";");
+        //本地数据库只保留筛选后的数据，不保存脏数据
+        if(dataIsValid("TP_MSG",map))
+        {
+            tpListTemp.push_back(map);
+        }
     }
 
-    saveLocalData("DP_MSG",dpList);
-    saveLocalData("TP_MSG",tpList);
+    saveLocalData("DP_MSG",dpListTemp);
+    saveLocalData("TP_MSG",tpListTemp);
 
     updteTable("DP_MSG",m_DPWidget->getTableWidget());
     updteTable("TP_MSG",m_TPWidget->getTableWidget());
@@ -80,13 +104,8 @@ void MainWindow::btnClearClicked()
 void MainWindow::btnUserManagerClicked()
 {
     UserManagementDialog dlg(m_currentUserName, m_currentRole, this);
-    dlg.exec();
-}
-
-void MainWindow::setCurrentUser(const QString &userName, UserStore::Role role)
-{
-    m_currentUserName = userName;
-    m_currentRole     = role;
+//    dlg.exec();
+    dialogExec(&dlg);
 }
 
 
@@ -136,7 +155,7 @@ void MainWindow::initUi()
     m_ribbonLayout->addWidget(groupNotify);
 
     QList<ZToolButton*> usersBtns;
-    ZToolButton* btnUserManager = createRibbonButton("User\nManager", QIcon(":/Resource/Resource/Icon/清屏-清空.png"));
+    ZToolButton* btnUserManager = createRibbonButton("User\nManager", QIcon(":/Resource/Resource/Icon/用户管理.png"));
     usersBtns << btnUserManager;
     auto groupUser = createRibbonGroup("User Manager", usersBtns);
     m_ribbonLayout->addWidget(groupUser);
@@ -389,16 +408,17 @@ void MainWindow::loadTableData(const QString &tableName,QTableWidget* table)
     for (int i = 0,row = 0; i < data.size(); ++i) {
         const QVariantMap &rowData = data[i];
 
-        if(!dataIsValid(tableName,rowData))
-        {
-            continue;
-        }
+//        if(!dataIsValid(tableName,rowData))
+//        {
+//            continue;
+//        }
         table->setRowCount(table->rowCount() + 1);
         //        QVariantMap pkValues;
         QString key = rowData.value(PrimaryKey).toString();
         for(int col = 0;col<table->columnCount();col++)
         {
             QString colName = table->horizontalHeaderItem(col)->text();
+            colName = CenterWidget::extractFreqOnly(colName);
             QString value = rowData.value(colName).toString();
             QTableWidgetItem* item = new QTableWidgetItem(value);
             table->setItem(row,col, item);
@@ -412,11 +432,11 @@ void MainWindow::loadTableData(const QString &tableName,QTableWidget* table)
              << "主键:" << pkColumns.join(",");
 }
 
-bool MainWindow::dataIsValid(const QString &tableName, QVariantMap map)
+bool MainWindow::dataIsValid(const QString &tableName, QMap<QString,QString> map)
 {
     if(tableName == "DP_MSG")
     {
-        if(map["PlatformFeature"].toString().isEmpty())
+        if(map["PlatformFeature"].isEmpty())
         {
             return false;
         }
@@ -560,6 +580,7 @@ QList<QMap<QString, QString> > MainWindow::loadDP()
         }
 
         dpMap.push_back(mapTemp);
+
     }
     return dpMap;
 }
@@ -670,12 +691,12 @@ QList<QMap<QString, QString> > MainWindow::loadTP()
 #else
 QList<QMap<QString, QString> > MainWindow::loadTP()
 {
-    QList<QMap<QString, QString> > dpMap;
+    QList<QMap<QString, QString> > tpMap;
     onConnectDb();
     if (!m_dmDatabase->isConnected())
     {
         qDebug()<<"数据库未连接";
-        return dpMap;
+        return tpMap;
     }
     QString sql = "select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPPLXX;";
     QList<QVariantMap> TPPLList = m_dmDatabase->readTableDataForSqlOrder(sql);
@@ -684,7 +705,7 @@ QList<QMap<QString, QString> > MainWindow::loadTP()
         QMap<QString, QString> mapTemp;
         QString TZCSXH = TPPLMap["TZCSXH"].toString();
         QString TPPL = TPPLMap["TPPL"].toString();
-        TPPLMap["Frequency"] = TPPL;
+        mapTemp["Frequency"] = TPPL;
         sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPTZ where TZCSXH='%1';").arg(TZCSXH);
         QList<QVariantMap> TPTZList = m_dmDatabase->readTableDataForSqlOrder(sql);
         if(TPTZList.count() > 0)
@@ -795,9 +816,11 @@ QList<QMap<QString, QString> > MainWindow::loadTP()
             }
         }
 
-        dpMap.push_back(mapTemp);
+
+        tpMap.push_back(mapTemp);
+
     }
-    return dpMap;
+    return tpMap;
 }
 #endif
 void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
@@ -822,10 +845,10 @@ void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
     }
     for(const QVariantMap& map : mapList)
     {
-        if(!dataIsValid(localDBTableName,map))
-        {
-            continue;
-        }
+//        if(!dataIsValid(localDBTableName,map))
+//        {
+//            continue;
+//        }
         QVariant dbUid = map[PrimaryKey];
         if(dbUid.isNull())
         {
@@ -840,12 +863,13 @@ void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
         {
             row = table->rowCount();
             QString key = map[PrimaryKey].toString();
-            onAddLine(table,localDBTableName,key);
+            addLine(table,key);
         }
 
         for(int col = 0;col<table->columnCount();col++)
         {
             QString header = table->horizontalHeaderItem(col)->text();
+            header = CenterWidget::extractFreqOnly(header);
             QString newVar = map[header].toString();
             if(table->item(row,col)->text() != newVar)
             {
@@ -857,12 +881,21 @@ void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
 }
 
 
-void MainWindow::onAddLine(QTableWidget *table, const QString &tableName,QString key)
+void MainWindow::onAddLine(QTableWidget *table, const QString &tableName, QString key)
 {
-    //    QTableWidget* table = m_DPWidget->getTableWidget();
+    QList<QMap<QString,QString> > mapList;
+    key = addLine(table,key);
+    QMap<QString,QString> map;
+    map.insert(PrimaryKey,key);
+    mapList.push_back(map);
+    saveLocalData(tableName,mapList);
+    return;
+}
+
+QString MainWindow::addLine(QTableWidget *table, QString key)
+{
     int row = table->rowCount();
     table->setRowCount(row + 1);
-    QList<QMap<QString,QString> > mapList;
     if(key.isEmpty())
     {
         key = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
@@ -873,11 +906,7 @@ void MainWindow::onAddLine(QTableWidget *table, const QString &tableName,QString
         item->setData(Qt::UserRole,key);
         table->setItem(row,i,item);
     }
-    QMap<QString,QString> map;
-    map.insert(PrimaryKey,key);
-    mapList.push_back(map);
-    saveLocalData(tableName,mapList);
-    return;
+    return key;
 }
 
 void MainWindow::onRemoveLine(QTableWidget *table, const QString &tableName)
@@ -916,6 +945,7 @@ void MainWindow::onUpdateTable(int row, int column, const QString &oldVal, const
 
     QString key = item->data(Qt::UserRole).toString();
     QString columnName = tableWidget->horizontalHeaderItem(column)->text();
+    columnName = CenterWidget::extractFreqOnly(columnName);
     QVariant value = item->text();
     QVariantMap pkValues;
     pkValues.insert(PrimaryKey,key);
@@ -923,7 +953,8 @@ void MainWindow::onUpdateTable(int row, int column, const QString &oldVal, const
         qDebug() << "单元格数据已保存:" << tableName << columnName << pkValues << value;
     } else {
         QMessageBox::warning(this, "警告", "保存失败: " + m_localDatabase->lastError());
-        loadTableData(tableName,tableWidget);
+        item->setText(oldVal);
+//        loadTableData(tableName,tableWidget);
     }
     ipc->publish("REFRESH");
 }
@@ -991,16 +1022,4 @@ QMap<int, QStringList> MainWindow::parseStrToMapList(const QString &src)
         result[keyStr].push_back(val);
     }
     return result;
-}
-
-QString MainWindow::extractFreqOnly(const QString &text)
-{
-    QString str = text;
-    QRegularExpression re(R"(^([0-9.]+))");
-    auto match = re.match(text.trimmed());
-    if(match.hasMatch())
-    {
-        str = match.captured(1);
-    }
-    return str;
 }

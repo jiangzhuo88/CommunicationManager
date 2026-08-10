@@ -69,7 +69,7 @@ private:
 
     // 最大化/还原
     QRect m_normalGeometry;
-    bool m_isMaximized = false;
+//    bool m_isMaximized = false;
 };
 
 #endif // CFramelessWindowBase_H

@@ -1,0 +1,19 @@
+{
+    "users": [
+        {
+            "name": "JZ",
+            "pwd": "cnt+",
+            "role": 1
+        },
+        {
+            "name": "admin",
+            "pwd": "Ii0gNlw=",
+            "role": 1
+        },
+        {
+            "name": "new_user",
+            "pwd": "cnt+",
+            "role": 1
+        }
+    ]
+}

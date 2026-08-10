@@ -63,9 +63,14 @@ public:
     // 当前用户数量
     int count() const;
 
-private:
+
     // 明文密码 -> 密文
-    static QString hashPassword(const QString& plain);
+    //    static QString hashPassword(const QString& plain);
+    // 明文密码 -> 密文
+    static QString encryPassword(const QString& plain);
+    // 密文密码 -> 明文
+    static QString decryPassword(const QString& encryted);
+private:
     // 配置文件全路径
     QString configPath() const;
     // 从配置加载到内存

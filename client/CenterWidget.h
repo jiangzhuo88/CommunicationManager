@@ -18,6 +18,7 @@ public:
     QStringList getTableColHeaders();
     QList<QMap<int, QString> > getCacheData();
     void clear();
+    static QString extractFreqOnly(const QString &text);
 signals:
     void sigAddALine();
     void sigRemoveALine();
@@ -28,7 +29,6 @@ private slots:
 private:
     void initAutoSize();
     bool eventFilter(QObject *watched, QEvent *event);
-    QString extractFreqOnly(const QString &text);
 private:
     Ui::CenterWidget *ui;
     QList<QMap<int,QString>> mapList;

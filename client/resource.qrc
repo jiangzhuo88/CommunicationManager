@@ -19,5 +19,6 @@
         <file>Resource/TitleBarIcon/Titlebar_Min_Hover.svg</file>
         <file>Resource/TitleBarIcon/Titlebar_Normal.svg</file>
         <file>Resource/TitleBarIcon/Titlebar_Normal_Hover.svg</file>
+        <file>Resource/Icon/用户管理.png</file>
     </qresource>
 </RCC>

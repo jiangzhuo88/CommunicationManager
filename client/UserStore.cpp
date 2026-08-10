@@ -20,20 +20,20 @@ UserStore::UserStore(QObject *parent)
     if (m_users.isEmpty()) {
         UserInfo admin;
         admin.userName     = "admin";
-        admin.passwordHash = hashPassword("admin");
+        admin.passwordHash = encryPassword("admin");
         admin.role         = RoleAdmin;
         m_users.insert(admin.userName, admin);
         save();
     }
 }
 
-QString UserStore::hashPassword(const QString& plain)
-{
-    // SHA-256(plain + salt)
-    QByteArray input = plain.toUtf8() + QByteArray(kSalt);
-    QByteArray hash = QCryptographicHash::hash(input, QCryptographicHash::Sha256);
-    return QString::fromLatin1(hash.toHex());
-}
+//QString UserStore::hashPassword(const QString& plain)
+//{
+//    // SHA-256(plain + salt)
+//    QByteArray input = plain.toUtf8() + QByteArray(kSalt);
+//    QByteArray hash = QCryptographicHash::hash(input, QCryptographicHash::Sha256);
+//    return QString::fromLatin1(hash.toHex());
+//}
 
 QString UserStore::configPath() const
 {
@@ -107,7 +107,9 @@ bool UserStore::validate(const QString& userName, const QString& password, Role&
 {
     auto it = m_users.constFind(userName);
     if (it == m_users.constEnd()) return false;
-    if (it.value().passwordHash != hashPassword(password)) return false;
+    UserInfo info = it.value();
+    QString realPassword = decryPassword(info.passwordHash);
+    if (realPassword != password) return false;
     outRole = it.value().role;
     return true;
 }
@@ -130,7 +132,7 @@ bool UserStore::addUser(const QString& userName, const QString& password, Role r
     if (m_users.contains(userName)) return false;
     UserInfo u;
     u.userName     = userName;
-    u.passwordHash = hashPassword(password);
+    u.passwordHash = encryPassword(password);
     u.role         = role;
     m_users.insert(userName, u);
     save();
@@ -152,7 +154,7 @@ bool UserStore::updatePassword(const QString& userName, const QString& newPasswo
     if (newPassword.isEmpty()) return false;
     auto it = m_users.find(userName);
     if (it == m_users.end()) return false;
-    it.value().passwordHash = hashPassword(newPassword);
+    it.value().passwordHash = encryPassword(newPassword);
     save();
     return true;
 }
@@ -169,4 +171,26 @@ bool UserStore::updateRole(const QString& userName, Role newRole)
 int UserStore::count() const
 {
     return m_users.size();
+}
+
+QString UserStore::encryPassword(const QString &plain)
+{
+    QByteArray data = plain.toUtf8();
+    QByteArray key(kSalt);
+    for(int i = 0;i < data.size();i++)
+    {
+        data[i] = data[i] ^ key[i % key.size()];
+    }
+    return QString::fromLatin1(data.toBase64());
+}
+
+QString UserStore::decryPassword(const QString &encryted)
+{
+    QByteArray data = QByteArray::fromBase64(encryted.toLatin1());
+    QByteArray key(kSalt);
+    for(int i = 0;i < data.size();i++)
+    {
+        data[i] = data[i] ^ key[i % key.size()];
+    }
+    return QString::fromUtf8(data);
 }

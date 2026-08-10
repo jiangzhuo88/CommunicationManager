@@ -68,29 +68,29 @@ void LoginDialog::initUi()
 
     // 用户名
     m_userEdit = new QLineEdit;
-    m_userEdit->setPlaceholderText("请输入用户名");
+    m_userEdit->setPlaceholderText("Please edit username");
     m_userEdit->setMinimumHeight(32);
 
     // 密码
     m_pwdEdit = new QLineEdit;
-    m_pwdEdit->setPlaceholderText("请输入密码");
+    m_pwdEdit->setPlaceholderText("Please edit password");
     m_pwdEdit->setEchoMode(QLineEdit::Password);
     m_pwdEdit->setMinimumHeight(32);
 
     QFormLayout* form = new QFormLayout;
     form->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
     form->setSpacing(10);
-    form->addRow("用户名:", m_userEdit);
-    form->addRow("密  码:", m_pwdEdit);
+    form->addRow("UerName:", m_userEdit);
+    form->addRow("Password:", m_pwdEdit);
     formLay->addLayout(form);
 
     // 按钮区
     QHBoxLayout* btnLay = new QHBoxLayout;
     btnLay->addStretch();
-    m_btnLogin = new QPushButton("登录");
+    m_btnLogin = new QPushButton("Login");
     m_btnLogin->setObjectName("loginBtn");
     m_btnLogin->setMinimumSize(80,32);
-    m_btnCancel = new QPushButton("取消");
+    m_btnCancel = new QPushButton("Cancel");
     m_btnCancel->setObjectName("loginCancelBtn");
     m_btnCancel->setMinimumSize(80,32);
     btnLay->addWidget(m_btnLogin);
@@ -119,18 +119,18 @@ QString LoginDialog::password() const { return m_pwdEdit->text(); }
 void LoginDialog::slotLogin()
 {
     if (userName().isEmpty()) {
-        QMessageBox::warning(this, "提示", "请输入用户名");
+        QMessageBox::warning(this, "Information", "Please edit username");
         m_userEdit->setFocus();
         return;
     }
     if (password().isEmpty()) {
-        QMessageBox::warning(this, "提示", "请输入密码");
+        QMessageBox::warning(this, "Information", "Please edit password");
         m_pwdEdit->setFocus();
         return;
     }
     UserStore::Role role = UserStore::RoleNormal;
     if (!m_store.validate(userName(), password(), role)) {
-        QMessageBox::warning(this, "登录失败", "用户名或密码错误");
+        QMessageBox::warning(this, "login failed", "username or password failed");
         m_pwdEdit->clear();
         m_pwdEdit->setFocus();
         return;

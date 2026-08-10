@@ -40,17 +40,18 @@ private:
 //    void saveTPLocalData(QList<QMap<QString, QString> > mapList);
     void onConnectDb();
     void loadTableData(const QString &tableName, QTableWidget *table);
-    bool dataIsValid(const QString &tableName,QVariantMap map);
+    bool dataIsValid(const QString &tableName, QMap<QString, QString> map);
     QList<QMap<QString, QString> > loadDP();
     QList<QMap<QString, QString> > loadTP();
     void updteTable(QString localDBTableName, QTableWidget* table);
     void onAddLine(QTableWidget* table, const QString& tableName, QString key = QString());
+    QString addLine(QTableWidget* table, QString key = QString());
     void onRemoveLine(QTableWidget* table,const QString& tableName);
     void onUpdateTable(int row, int column,const QString& oldVal,const QString& newVal, QTableWidget* tableWidget, const QString& tableName);
     void onPasteTable(CenterWidget* cenWidget,const QString& tableName);
     QString getStr(int number,QString str);
     QMap<int, QStringList> parseStrToMapList(const QString& src);
-    QString extractFreqOnly(const QString &text);
+
 private:
     // 顶部Ribbon栏
     QWidget* m_ribbonBar;

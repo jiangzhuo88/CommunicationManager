@@ -187,5 +187,6 @@ QWidget#loginTitleBar{
     border-bottom: 1px solid #dcdcdc;
 }
 QFrame#loginFormFrame{
-    background-color:#BFDBFF;
+    background-color: #ffffff;
+    border: 1px solid #b0b0b0;
 }

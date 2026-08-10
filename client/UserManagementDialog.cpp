@@ -39,7 +39,7 @@ void UserManagementDialog::initUi()
     titleLay->setContentsMargins(10,0,0,0);
     titleLay->setSpacing(0);
 
-    m_titleLab = new QLabel("用户管理");
+    m_titleLab = new QLabel("User Manager");
     QFont fnt = m_titleLab->font();
     fnt.setPointSize(10);
     m_titleLab->setFont(fnt);
@@ -64,7 +64,7 @@ void UserManagementDialog::initUi()
 
     // 用户表格：用户名 / 密码（明文显示，仅对话框内存） / 角色 / 操作
     m_table = new QTableWidget(0, 3);
-    m_table->setHorizontalHeaderLabels({"用户名", "密码", "角色"});
+    m_table->setHorizontalHeaderLabels({"UserName", "Password", "Role"});
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -77,14 +77,14 @@ void UserManagementDialog::initUi()
     // 按钮区
     QHBoxLayout* btnLay = new QHBoxLayout;
     btnLay->addStretch();
-    m_btnAdd = new QPushButton("添加用户");
+    m_btnAdd = new QPushButton("Add User");
     m_btnAdd->setObjectName("loginBtn");
     m_btnAdd->setMinimumSize(90,32);
-    m_btnDelete = new QPushButton("删除用户");
+    m_btnDelete = new QPushButton("Delete User");
     m_btnDelete->setObjectName("loginCancelBtn");
     m_btnDelete->setMinimumSize(90,32);
     m_btnDelete->setEnabled(false);
-    m_btnApply = new QPushButton("应用");
+    m_btnApply = new QPushButton("Apply");
     m_btnApply->setObjectName("loginBtn");
     m_btnApply->setMinimumSize(90,32);
     btnLay->addWidget(m_btnAdd);
@@ -122,7 +122,7 @@ void UserManagementDialog::loadUsers()
         eu.userName = u.userName;
         eu.role     = u.role;
         // 已存在用户的密码不回显明文，置空表示"未修改"
-        eu.password = "";
+        eu.password = UserStore::decryPassword(u.passwordHash);
         eu.isNew    = false;
         eu.removed  = false;
         m_editList.append(eu);
@@ -135,16 +135,17 @@ void UserManagementDialog::loadUsers()
         m_table->insertRow(i);
         m_table->setItem(i, 0, new QTableWidgetItem(u.userName));
         // 密码列：已有用户显示 "*"，新增用户显示空（等待输入）
-        QTableWidgetItem* pwdItem = new QTableWidgetItem(u.isNew ? u.password : QString("*"));
-        pwdItem->setTextAlignment(Qt::AlignCenter);
-        m_table->setItem(i, 1, pwdItem);
+//        QTableWidgetItem* pwdItem = new QTableWidgetItem(u.password);
+        QLineEdit* pwdItem = new QLineEdit(u.password);
+//        pwdItem->setTextAlignment(Qt::AlignCenter);
+        m_table->setCellWidget(i, 1, pwdItem);
         // 角色列：使用 QComboBox
         QComboBox* combo = new QComboBox;
-        combo->addItem("普通用户", static_cast<int>(UserStore::RoleNormal));
-        combo->addItem("管理员",   static_cast<int>(UserStore::RoleAdmin));
+        combo->addItem("User", static_cast<int>(UserStore::RoleNormal));
+        combo->addItem("Admin",   static_cast<int>(UserStore::RoleAdmin));
         combo->setCurrentIndex(u.role == UserStore::RoleAdmin ? 1 : 0);
         // 普通用户不能改角色
-        if (m_currentRole != UserStore::RoleAdmin) {
+        if (m_currentUser == u.userName || m_currentRole != UserStore::RoleAdmin) {
             combo->setEnabled(false);
         }
         m_table->setCellWidget(i, 2, combo);
@@ -159,22 +160,24 @@ void UserManagementDialog::slotAddUser()
     // 默认用户名
     m_table->setItem(row, 0, new QTableWidgetItem("new_user"));
     // 密码列为空，等待输入
-    QTableWidgetItem* pwdItem = new QTableWidgetItem("");
-    pwdItem->setTextAlignment(Qt::AlignCenter);
-    m_table->setItem(row, 1, pwdItem);
+//    QTableWidgetItem* pwdItem = new QTableWidgetItem("");
+//    pwdItem->setTextAlignment(Qt::AlignCenter);
+//    m_table->setItem(row, 1, pwdItem);
+    QLineEdit* pwdItem = new QLineEdit;
+    m_table->setCellWidget(row, 1, pwdItem);
     // 角色
     QComboBox* combo = new QComboBox;
-    combo->addItem("普通用户", static_cast<int>(UserStore::RoleNormal));
-    combo->addItem("管理员",   static_cast<int>(UserStore::RoleAdmin));
+    combo->addItem("User", static_cast<int>(UserStore::RoleNormal));
+    combo->addItem("Admin",   static_cast<int>(UserStore::RoleAdmin));
     m_table->setCellWidget(row, 2, combo);
 
-    // 同步到内存编辑列表
-    EditableUser u;
-    u.userName = "new_user";
-    u.password = "";
-    u.role     = UserStore::RoleNormal;
-    u.isNew    = true;
-    m_editList.append(u);
+//    // 同步到内存编辑列表
+//    EditableUser u;
+//    u.userName = "new_user";
+//    u.password = "";
+//    u.role     = UserStore::RoleNormal;
+//    u.isNew    = true;
+//    m_editList.append(u);
 
     m_table->editItem(m_table->item(row, 0));
 }
@@ -188,7 +191,7 @@ void UserManagementDialog::slotDeleteUser()
 
     // 规则1：不能删除自己
     if (name == m_currentUser) {
-        QMessageBox::information(this, "提示", "不能删除当前登录的账号");
+        QMessageBox::information(this, "Information", "Can not delete Myself");
         return;
     }
     // 规则2：普通用户不能删除管理员账号
@@ -196,7 +199,7 @@ void UserManagementDialog::slotDeleteUser()
         // 取角色列 combo 当前值
         QComboBox* combo = qobject_cast<QComboBox*>(m_table->cellWidget(row, 2));
         if (combo && combo->currentData().toInt() == static_cast<int>(UserStore::RoleAdmin)) {
-            QMessageBox::information(this, "提示", "普通用户不能删除管理员账号");
+            QMessageBox::information(this, "Information", "User can not delete amin ID");
             return;
         }
     }
@@ -222,7 +225,7 @@ void UserManagementDialog::slotApplyChanges()
 {
     // 仅管理员可应用
     if (m_currentRole != UserStore::RoleAdmin) {
-        QMessageBox::information(this, "提示", "普通用户无权修改用户列表");
+        QMessageBox::information(this, "Information", "Common user can not set");
         return;
     }
 
@@ -238,7 +241,8 @@ void UserManagementDialog::slotApplyChanges()
 
     for (int i = 0; i < m_table->rowCount(); ++i) {
         QTableWidgetItem* nameItem = m_table->item(i, 0);
-        QTableWidgetItem* pwdItem = m_table->item(i, 1);
+//        QTableWidgetItem* pwdItem = m_table->item(i, 1);
+        QLineEdit* pwdItem = qobject_cast<QLineEdit*>(m_table->cellWidget(i, 1));
         QComboBox* combo = qobject_cast<QComboBox*>(m_table->cellWidget(i, 2));
         if (!nameItem || !pwdItem || !combo) continue;
 
@@ -247,11 +251,11 @@ void UserManagementDialog::slotApplyChanges()
         UserStore::Role role = static_cast<UserStore::Role>(combo->currentData().toInt());
 
         if (name.isEmpty()) {
-            QMessageBox::warning(this, "提示", QString("第 %1 行用户名不能为空").arg(i+1));
+            QMessageBox::warning(this, "Information", QString("Can not null in %1 line").arg(i+1));
             return;
         }
         if (seen.contains(name)) {
-            QMessageBox::warning(this, "提示", QString("用户名 %1 重复").arg(name));
+            QMessageBox::warning(this, "Information", QString("Common user name %1 is repetition").arg(name));
             return;
         }
 
@@ -266,10 +270,16 @@ void UserManagementDialog::slotApplyChanges()
         }
         t.isNew = !existed;
         // 新增用户密码不能为空
-        if (t.isNew && pwd.isEmpty()) {
-            QMessageBox::warning(this, "提示", QString("新增用户 %1 必须设置密码").arg(name));
+//        if (t.isNew && pwd.isEmpty()) {
+//            QMessageBox::warning(this, "Information", QString("New user %1 should be set password").arg(name));
+//            return;
+//        }
+        if(pwd.isEmpty() || pwd.trimmed().isEmpty())
+        {
+            QMessageBox::warning(this, "Information", QString("User %1's password can not null").arg(name));
             return;
         }
+        t.pwd = pwd;
         targets.append(t);
         seen.insert(name);
     }
@@ -283,10 +293,13 @@ void UserManagementDialog::slotApplyChanges()
     // 3. 校验不能删除自己（自己必须在最终列表里）
     bool selfKept = false;
     for (const TargetUser& t : targets) {
-        if (t.name == m_currentUser) { selfKept = true; break; }
+        if (t.name == m_currentUser) {
+            selfKept = true;
+            break;
+        }
     }
     if (!selfKept) {
-        QMessageBox::warning(this, "提示", "不能删除当前登录的账号");
+        QMessageBox::warning(this, "Information", "Can not remove myself");
         return;
     }
 
@@ -308,15 +321,16 @@ void UserManagementDialog::slotApplyChanges()
         if (t.isNew) {
             store.addUser(t.name, t.pwd, t.role);
         } else {
-            // 已存在用户：密码不为空才改密码
-            if (!t.pwd.isEmpty()) {
-                store.updatePassword(t.name, t.pwd);
-            }
+//            // 已存在用户：密码不为空才改密码
+//            if (!t.pwd.isEmpty()) {
+//                store.updatePassword(t.name, t.pwd);
+//            }
+            store.updatePassword(t.name,t.pwd);
             store.updateRole(t.name, t.role);
         }
     }
 
-    QMessageBox::information(this, "提示", "用户列表已更新");
+    QMessageBox::information(this, "Information", "User list is update");
     // 重新加载
     loadUsers();
 }

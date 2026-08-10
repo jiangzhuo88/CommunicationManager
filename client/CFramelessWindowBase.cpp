@@ -210,19 +210,15 @@ void CFramelessWindowBase::slotMaxRestore()
     QWidget* top = getTopWindow();
     if (!top) return;
 
-    if (m_isMaximized) {
-        // 还原
-        top->setGeometry(m_normalGeometry);
-        m_btnMax->setObjectName("btnMax");
-        m_isMaximized = false;
+    if (top->isMaximized()) {
+        top->showNormal();
+        m_btnMax->setObjectName("btnMax");  // 与 QSS 中保持一致
+//        m_isMaximized = true;
+
     } else {
-        // 最大化：保存当前几何，设置为屏幕大小
-        m_normalGeometry = top->geometry();
-//        QRect screenRect = top->screen()->availableGeometry();
-        QRect screenRect = QApplication::desktop()->availableGeometry(top);
-        top->setGeometry(screenRect);
-        m_btnMax->setObjectName("btnNomal");  // 与 QSS 中保持一致
-        m_isMaximized = true;
+        top->showMaximized();
+        m_btnMax->setObjectName("btnNomal");
+//        m_isMaximized = false;
     }
     updateMaxButtonIcon();
 }
@@ -252,22 +248,9 @@ void CFramelessWindowBase::mouseMoveEvent(QMouseEvent *event)
     if (m_isDrag) {
         QWidget* top = getTopWindow();
         if (top) {
-            // 最大化状态下拖动标题栏：先还原窗口再跟随鼠标移动
-            if (m_isMaximized) {
-                int cursorX = event->globalPos().x();
-                double relX = (double)(cursorX - top->geometry().left())
-                              / qMax(1, top->geometry().width());
-                // 还原到正常几何
-                top->setGeometry(m_normalGeometry);
-                m_btnMax->setObjectName("btnMax");
-                m_isMaximized = false;
-                updateMaxButtonIcon();
-                QRect normalRect = top->geometry();
-                int newX = cursorX - (int)(normalRect.width() * relX);
-                int newY = event->globalPos().y() - event->pos().y();
-                top->move(newX, newY);
-                // 重新计算拖动起始位置
-                m_dragStartPos = event->globalPos() - top->geometry().topLeft();
+//            // 最大化状态下拖动标题栏
+            if (top->isMaximized()) {
+                return;
             }
             top->move(event->globalPos() - m_dragStartPos);
         }
@@ -305,7 +288,7 @@ bool CFramelessWindowBase::eventFilter(QObject *watched, QEvent *event)
         QMouseEvent* me = static_cast<QMouseEvent*>(event);
         if (me->button() != Qt::LeftButton) break;
         // 最大化时不允许边框缩放
-        if (m_isMaximized) break;
+        if (top->isMaximized()) break;
         // 鼠标在按钮上时不触发缩放，避免误拦截按钮点击
         if (qobject_cast<QAbstractButton*>(w)) break;
 
@@ -333,7 +316,7 @@ bool CFramelessWindowBase::eventFilter(QObject *watched, QEvent *event)
         }
 
         // 根据是否靠近边缘更新光标
-        if (!m_isMaximized && !qobject_cast<QAbstractButton*>(w)) {
+        if (!top->isMaximized() && !qobject_cast<QAbstractButton*>(w)) {
             ResizeDir dir = getResizeDirection(localPos, top);
             if (dir != DIR_NONE) {
                 w->setCursor(cursorForDir(dir));
