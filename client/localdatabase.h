@@ -37,9 +37,6 @@ public:
 
     QList<QVariantMap> getTableData(const QString &tableName);
 
-    QList<QVariantMap> queryRows(const QString &sql, const QVariantList &bindValues = QVariantList());
-    bool executeSql(const QString &sql, const QVariantList &bindValues = QVariantList());
-
     QSqlDatabase database() const;
     QString lastError() const;
 

@@ -16,6 +16,19 @@
 #include "dmdatabase.h"
 #include "qt_ipcnotify.h"
 #include "UserStore.h"
+struct CHARAPARA_STU
+{
+    QString characterFeature;
+    QString freq;
+    QStringList Modulation;
+    QString SymbolRate;
+    QMap<QString, QString> otherMsgMap;
+};
+struct RESULT_STU
+{
+    QList<CHARAPARA_STU> CharaOaraList;
+    QMap<QString, QString> otherMsgMap;
+};
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -36,13 +49,13 @@ private:
     void saveConfig();
     void loadLocalData();
     void loadIPC();
-    void saveLocalData(const QString &tableName, QList<QMap<QString, QString> > mapList);
+    void saveLocalData(const QString &tableName, QList<RESULT_STU> mapList);
 //    void saveTPLocalData(QList<QMap<QString, QString> > mapList);
     void onConnectDb();
     void loadTableData(const QString &tableName, QTableWidget *table);
     bool dataIsValid(const QString &tableName, QMap<QString, QString> map);
-    QList<QMap<QString, QString> > loadDP();
-    QList<QMap<QString, QString> > loadTP();
+    QList<RESULT_STU> loadDP();
+    QList<RESULT_STU> loadTP();
     void updteTable(QString localDBTableName, QTableWidget* table);
     void onAddLine(QTableWidget* table, const QString& tableName, QString key = QString());
     QString addLine(QTableWidget* table, QString key = QString());
@@ -51,11 +64,8 @@ private:
     void onPasteTable(CenterWidget* cenWidget,const QString& tableName);
     QString getStr(int number,QString str);
     QMap<int, QStringList> parseStrToMapList(const QString& src);
-
-    static QString subTableName(const QString& mainTableName);
     void createSubTables();
-    void syncSubTable(const QString& mainTableName, const QList<QMap<QString,QString>>& data);
-    void syncSubTableRow(const QString& mainTableName, const QString& tzcsxh);
+    QString subTableName(const QString &name);
 
 private:
     // 顶部Ribbon栏

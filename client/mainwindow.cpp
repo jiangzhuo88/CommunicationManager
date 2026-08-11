@@ -11,7 +11,7 @@
 #include <QDir>
 #include <QDateTime>
 #include <thread>
-#define PrimaryKey "TZCSXH"
+#define PrimaryKey "SBID"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_dmDatabase(new DmDatabase(this))
@@ -49,40 +49,12 @@ void MainWindow::btnImportClicked()
         return;
     }
 
-    QList<QMap<QString,QString>> dpList = loadDP();
-    QList<QMap<QString,QString>> tpList = loadTP();
-    QList<QMap<QString,QString>> dpListTemp;
-    QList<QMap<QString,QString>> tpListTemp;
-    for(QMap<QString,QString>& map : dpList)
-    {
-        QString str = map["Platform"];
-        QMap<int,QStringList> MBMCMap = parseStrToMapList(str);
-        map["PlatformMsg"] = MBMCMap[30].join(";");
-        map["PlatformFeature"] = MBMCMap[156].join(";");
-        //本地数据库只保留筛选后的数据，不保存脏数据
-        if(dataIsValid("DP_MSG",map))
-        {
-            dpListTemp.push_back(map);
-        }
-    }
-    for(QMap<QString,QString>& map : tpList)
-    {
-        QString str = map["Platform"];
-        QMap<int,QStringList> MBMCMap = parseStrToMapList(str);
-        map["PlatformMsg"] = MBMCMap[30].join(";");
-        map["PlatformFeature"] = MBMCMap[156].join(";");
-        //本地数据库只保留筛选后的数据，不保存脏数据
-        if(dataIsValid("TP_MSG",map))
-        {
-            tpListTemp.push_back(map);
-        }
-    }
+    QList<RESULT_STU> dpList = loadDP();
+    QList<RESULT_STU> tpList = loadTP();
 
-    saveLocalData("DP_MSG",dpListTemp);
-    saveLocalData("TP_MSG",tpListTemp);
 
-    syncSubTable("DP_MSG",dpListTemp);
-    syncSubTable("TP_MSG",tpListTemp);
+    saveLocalData("DP_MSG",dpList);
+    saveLocalData("TP_MSG",tpList);
 
     updteTable("DP_MSG",m_DPWidget->getTableWidget());
     updteTable("TP_MSG",m_TPWidget->getTableWidget());
@@ -101,8 +73,6 @@ void MainWindow::btnClearClicked()
     m_TPWidget->clear();
     m_localDatabase->dropData("DP_MSG");
     m_localDatabase->dropData("TP_MSG");
-    m_localDatabase->dropData(subTableName("DP_MSG"));
-    m_localDatabase->dropData(subTableName("TP_MSG"));
     ipc->publish("REFRESH");
 }
 
@@ -196,9 +166,9 @@ void MainWindow::initUi()
     m_tabWidget->setObjectName("centralTabWidget");
     m_tabWidget->tabBar()->setObjectName("centralTabWidgetBar");
     QStringList dpList;
-    dpList<<"Contry"<<"DeviceName"<<"ThreatLevel"<<"PlatformMsg"<<"PlatformFeature"<<"Frequency(MHz)"<<"Modulation"<<"SymbolRate"<<"CharacterFeature";
+    dpList<<"Contry"<<"DeviceName"<<"ThreatLevel"<<"PlatformName"<<"PlatformEQ"<<"Frequency(MHz)"<<"Modulation"<<"SymbolRate"<<"CharacterFeature";
     QStringList tpList;
-    tpList<<"Contry"<<"DeviceName"<<"ThreatLevel"<<"PlatformMsg"<<"PlatformFeature"<<"Frequency(MHz)"<<"Modulation"<<"SymbolRate"<<"CharacterFeature";
+    tpList<<"Contry"<<"DeviceName"<<"ThreatLevel"<<"PlatformName"<<"PlatformEQ"<<"Frequency(MHz)"<<"Modulation"<<"SymbolRate"<<"CharacterFeature";
     m_DPWidget = new CenterWidget(dpList);
     m_TPWidget = new CenterWidget(tpList);
     m_tabWidget->setObjectName("centralWidget");
@@ -326,11 +296,11 @@ void MainWindow::loadLocalData()
     }
     m_localDatabase->createTable("DP_MSG",m_DPWidget->getTableColHeaders()<<PrimaryKey);
     m_localDatabase->createTable("TP_MSG",m_TPWidget->getTableColHeaders()<<PrimaryKey);
-    createSubTables();
 
     //    QStringList tables = m_localDatabase->getTableNames();
     loadTableData("TP_MSG",m_TPWidget->getTableWidget());
     loadTableData("DP_MSG",m_DPWidget->getTableWidget());
+    createSubTables();
 }
 
 void MainWindow::loadIPC()
@@ -348,11 +318,31 @@ void MainWindow::loadIPC()
     ipc->start();
 }
 
-void MainWindow::saveLocalData(const QString &tableName,QList<QMap<QString,QString>> mapList)
+void MainWindow::saveLocalData(const QString &tableName, QList<RESULT_STU> mapList)
 {
-    //    QList<QMap<QString,QString>> dpList = loadDP();
-    if (!m_localDatabase->syncData(tableName, PrimaryKey,mapList)) {
-        QMessageBox::critical(this, "错误", "同步数据失败: " + m_localDatabase->lastError());
+    QList<QMap<QString,QString>> listTemp;
+//    QList<QMap<QString,QString>> tpListTemp;
+    QList<QMap<QString,QString>> subListTemp;
+    for(RESULT_STU &stu : mapList)
+    {
+        QString key = stu.otherMsgMap[PrimaryKey];
+        listTemp.push_back(stu.otherMsgMap);
+        for(CHARAPARA_STU charaStu : stu.CharaOaraList)
+        {
+            QMap<QString,QString> subMap;
+            subMap.insert(PrimaryKey,key);
+            subMap.insert("Frequency",charaStu.freq);
+            subMap.insert("Modulation",charaStu.Modulation.join(";"));
+            subMap.insert("SymbolRate",charaStu.SymbolRate);
+            subListTemp.push_back(subMap);
+        }
+
+    }
+    if (!m_localDatabase->syncData(tableName, PrimaryKey,listTemp)) {
+        QMessageBox::critical(this, "错误", "主表同步数据失败: " + m_localDatabase->lastError());
+    }
+    if (!m_localDatabase->syncData(tableName, PrimaryKey,subListTemp)) {
+        QMessageBox::critical(this, "错误", "子表同步数据失败: " + m_localDatabase->lastError());
     }
 
 }
@@ -442,86 +432,115 @@ bool MainWindow::dataIsValid(const QString &tableName, QMap<QString,QString> map
 {
     if(tableName == "DP_MSG")
     {
-        if(map["PlatformFeature"].isEmpty())
-        {
-            return false;
-        }
+//        if(map["PlatformFeature"].isEmpty())
+//        {
+//            return false;
+//        }
     }
     return true;
 }
 
-QList<QMap<QString, QString> > MainWindow::loadDP()
+QList<RESULT_STU> MainWindow::loadDP()
 {
-    QList<QMap<QString, QString> > dpMap;
+    QList<RESULT_STU> dpMap;
     onConnectDb();
     if (!m_dmDatabase->isConnected())
     {
         qDebug()<<"数据库未连接";
         return dpMap;
     }
-    //寻找定频表2-6g的数据，第一个匹配2-5，后三个分别匹配0-9，再包含6000
-//    QString sql = "select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBPP where REGEXP_LIKE(DZBPL,'(^|;)([2-5][0-9]{3}|6000)(;|$)');";
-    //2026.08.03 临时修改：因为没有2-6G数据，查询6000以下的频率
-    QString sql = "select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBPP where DZBPL <= '6000';";
+    QString sql = "select * FROM KZCSJDB.QBCL_QBZB_DZMB where DZMBLBNM ='156';";
     QList<QVariantMap> dpKeys = m_dmDatabase->readTableDataForSqlOrder(sql);
-    for(QVariantMap keys : dpKeys)
+    for(QVariantMap map : dpKeys)
     {
-        QMap<QString, QString> mapTemp;
-        QString TZCSXH = keys["TZCSXH"].toString();
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBTZ where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> DZBTZList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(DZBTZList.count() > 0)
-        {
-            QStringList TZYSList = DZBTZList[0]["TZYS"].toString().split(",");
-            QString FHSL = DZBTZList[0]["FHSL"].toString();
-            QString TZYS;
-            for(QString TZYSVar : TZYSList)
-            {
-                if(TZYS.count() > 0)
-                {
-                    TZYS += ";";
-                }
-                sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_XHTZYS where XHTZYSNM='%1';").arg(TZYSVar);
-                QList<QVariantMap> list = m_dmDatabase->readTableDataForSqlOrder(sql);
-                if(list.count() <= 0)
-                {
-                    TZYS += TZYSVar;
-                    continue;
-                }
-                TZYS += list[0]["ASCDM"].toString();
-            }
-            mapTemp["Modulation"] = TZYS;
-            mapTemp["SymbolRate"] = FHSL;
-        }
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBPP where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> DZPBBList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(DZPBBList.count() > 0)
-        {
-            QString DZBPL = DZPBBList[0]["DZBPL"].toString();
-            mapTemp["Frequency"] = DZBPL;
-        }
-
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS where TZCSXH='%1';").arg(TZCSXH);
+        RESULT_STU paramTemp;
+        int DZMBLBNM = map["DZMBLBNM"].toInt();
+        QString MBMC = map["MBMC"].toString();
+        QString MBID = map["MBID"].toString();
+        QString MBNM = map["MBNM"].toString();
+        paramTemp.otherMsgMap["PlatformName"] = MBMC;
+        paramTemp.otherMsgMap[PrimaryKey] = MBID;
+        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS where TXMBID='%1';").arg(MBID);
         QList<QVariantMap> TZCSList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        QString TXMBID = TZCSList[0]["TXMBID"].toString();
-        mapTemp[PrimaryKey] = TZCSXH;
-        mapTemp["SBID"] = TXMBID;
-        QStringList TXTZList = TZCSList[0]["TXTZ"].toString().split(";");
-        QString MC;
-        for(QString var : TXTZList)
+        QStringList freqs;
+        QStringList TZYSs;
+        QStringList FHSLs;
+        QStringList MCs;
+        bool isDP = false;
+        for(QVariantMap TZCSMap :TZCSList)
         {
-            int TXTZ = var.toInt();
-            sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_CSXTDL where CSXTDLNM='%1';").arg(TXTZ);
-            QList<QVariantMap> CSXTDLNMList = m_dmDatabase->readTableDataForSqlOrder(sql);
-            MC += CSXTDLNMList[0]["MC"].toString();
+            CHARAPARA_STU charaPara;
+            QString TZCSXH = TZCSMap["TZCSXH"].toString();
+            QStringList TXTZList = TZCSMap["TXTZ"].toString().split(";");
+
+
+
+//            mapTemp["TZCSXH"] = TZCSXH;
+            QString sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBPP where TZCSXH = '%1';").arg(TZCSXH);
+            QList<QVariantMap> dpList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            if(dpList.count() > 0)
+            {
+                QString DZBPL = dpList[0]["DZBPL"].toString();
+                freqs.push_back(DZBPL);
+                charaPara.freq = DZBPL;
+            }
+            sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBTZ where TZCSXH='%1';").arg(TZCSXH);
+            QList<QVariantMap> DZBTZList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            if(DZBTZList.count() > 0)
+            {
+                QStringList TZYSList = DZBTZList[0]["TZYS"].toString().split(",");
+                QString FHSL = DZBTZList[0]["FHSL"].toString();
+                FHSLs.push_back(FHSL);
+                charaPara.SymbolRate = FHSL;
+//                QString TZYS;
+                for(QString TZYSVar : TZYSList)
+                {
+//                    if(TZYS.count() > 0)
+//                    {
+//                        TZYS += ";";
+//                    }
+                    sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_XHTZYS where XHTZYSNM='%1';").arg(TZYSVar);
+                    QList<QVariantMap> list = m_dmDatabase->readTableDataForSqlOrder(sql);
+                    if(list.count() <= 0)
+                    {
+//                        TZYS += TZYSVar;
+                        TZYSs.push_back(TZYSVar);
+                        charaPara.Modulation.push_back(TZYSVar);
+                        continue;
+                    }
+//                    TZYS += list[0]["ASCDM"].toString();
+                    QString TZYS = list[0]["ASCDM"].toString();
+                    TZYSs.push_back(TZYS);
+                    charaPara.Modulation.push_back(TZYS);
+                }
+
+            }
+//            QString MC;
+            for(QString var : TXTZList)
+            {
+                int TXTZ = var.toInt();
+                if(TXTZ == 1)
+                {
+                    isDP = true;
+                }
+                sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_CSXTDL where CSXTDLNM='%1';").arg(TXTZ);
+                QList<QVariantMap> CSXTDLNMList = m_dmDatabase->readTableDataForSqlOrder(sql);
+                QString mc = CSXTDLNMList[0]["MC"].toString();
+                MCs.push_back(mc);
+                charaPara.characterFeature = mc;
+            }
+            paramTemp.CharaOaraList.push_back(charaPara);
         }
-        mapTemp["CharacterFeature"] = MC;
-        //找不到MBID这条数据就接不下去了
-        if(TZCSList.count() <= 0)
+        if(!isDP)
         {
             continue;
         }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_XHSB where SBID='%1';").arg(TXMBID);
+        paramTemp.otherMsgMap["CharacterFeature"] = MCs.join(";");
+        paramTemp.otherMsgMap["Frequency"] = freqs.join(";");
+        paramTemp.otherMsgMap["Modulation"] = TZYSs.join(";");
+        paramTemp.otherMsgMap["SymbolRate"] = FHSLs.join(";");
+
+        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_XHSB where SBID='%1';").arg(MBID);
         //信号识别表
         QList<QVariantMap> XHSBList = m_dmDatabase->readTableDataForSqlOrder(sql);
         if(XHSBList.count() > 0)
@@ -531,37 +550,27 @@ QList<QMap<QString, QString> > MainWindow::loadDP()
             QString SBXH = XHSBMap["SBXH"].toString();
             int WXCDNM = XHSBMap["WXCDNM"].toInt();
             QString strWXCDNM = QString("%1").arg(WXCDNM,2,10,QChar('0'));
-            mapTemp["Contry"] = GJDQNM;
-            mapTemp["DeviceName"] = SBXH;
-            mapTemp["ThreatLevel"] = strWXCDNM;
+            paramTemp.otherMsgMap["Contry"] = GJDQNM;
+            paramTemp.otherMsgMap["DeviceName"] = SBXH;
+            paramTemp.otherMsgMap["ThreatLevel"] = strWXCDNM;
             sql = QString("select MC FROM KZCSJDB.ZZBZ_S_TY_GJ where GJDQNM='%1';").arg(GJDQNM);
             //信号识别表
             QList<QVariantMap> GJDQNMTrans = m_dmDatabase->readTableDataForSqlOrder(sql);
             if(GJDQNMTrans.count() > 0)
             {
-                mapTemp["Contry"] = GJDQNMTrans[0]["MC"].toString();
+                paramTemp.otherMsgMap["Contry"] = GJDQNMTrans[0]["MC"].toString();
             }
             sql = QString("select MC FROM KZCSJDB.ZZBZ_S_XZ_QB_MBWXCD where WXCDNM='%1';").arg(strWXCDNM);
             QList<QVariantMap> WXCDList = m_dmDatabase->readTableDataForSqlOrder(sql);
             if(WXCDList.count() > 0)
             {
-                mapTemp["ThreatLevel"] = WXCDList[0]["MC"].toString();
+                paramTemp.otherMsgMap["ThreatLevel"] = WXCDList[0]["MC"].toString();
             }
         }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_DZMB where MBID='%1';").arg(TXMBID);
-        //平台信息
-        QList<QVariantMap> PTXXList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(PTXXList.count() > 0)
-        {
-            QVariantMap PTXXMap = PTXXList[0];
-            int DZMBLBNM = PTXXMap["DZMBLBNM"].toInt();
-            QString MBMC = PTXXMap["MBMC"].toString();
-            mapTemp["Platform"] += getStr(DZMBLBNM,MBMC);
-
-        }
-
-        sql = QString("select * from QBZB_ZBMB_TXMB_GZCS        where TXMBID = '%1';").arg(TXMBID);
+# if 0
+        sql = QString("select * from QBZB_ZBMB_TXMB_GZCS        where TXMBID = '%1';").arg(MBID);
         QList<QVariantMap> GZCSXHList = m_dmDatabase->readTableDataForSqlOrder(sql);
+        QStringList platformEQ;
         for(QVariantMap map : GZCSXHList)
         {
             QString GZCSXH = map["GZCSXH"].toString();
@@ -574,191 +583,142 @@ QList<QMap<QString, QString> > MainWindow::loadDP()
                 {
                     continue;
                 }
+                qDebug()<<"MBID:"<<PTMBID;
                 sql = QString("select * from KZCSJDB.QBCL_QBZB_DZMB where MBID = '%1';").arg(PTMBID);
                 QList<QVariantMap> PTList = m_dmDatabase->readTableDataForSqlOrder(sql);
                 for(QVariantMap varmap : PTList)
                 {
                     int DZMBLBNM = varmap["DZMBLBNM"].toInt();
                     QString MBMC = varmap["MBMC"].toString();
-                    mapTemp["Platform"] += getStr(DZMBLBNM,MBMC);
+                    platformEQ.push_back(MBMC);
+
                 }
             }
         }
-
-        dpMap.push_back(mapTemp);
-
-    }
-    return dpMap;
-}
-# if 0
-QList<QMap<QString, QString> > MainWindow::loadTP()
-{
-    QList<QMap<QString, QString> > dpMap;
-    onConnectDb();
-    if (!m_dmDatabase->isConnected())
-    {
-        qDebug()<<"数据库未连接";
-        return dpMap;
-    }
-    // 寻找定频表2-6g的数据，第一个匹配2-5，后三个分别匹配0-9，再包含6000
-    QString sql = R"(WITH split_data AS(
-                  select TZCSXH,TPPL,REGEXP_SUBSTR(TPPL,'[^;]+',1,LEVEL)
-                  AS seg
-                  FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPPLXX
-                  WHERE TPPL IS NOT NULL
-                  CONNECT BY LEVEL <= REGEXP_COUNT(TPPL,';') + 1
-                  AND PRIOR TZCSXH = TZCSXH
-                  AND PRIOR DBMS_RANDOM.VALUE IS NOT NULL
-                  )
-                  SELECT DISTINCT TZCSXH,TPPL
-                  FROM split_data
-                  WHERE REGEXP_LIKE(seg,'(^|;)([2-5][0-9]{3}|6000)(;|$)')
-                  OR
-                  (REGEXP_LIKE(seg,'^[0-9]+[-~][0-9]+$')
-                  AND TO_NUMBER(REGEXP_SUBSTR(seg,'[0-9]+',1,1))<=6000
-                  AND TO_NUMBER(REGEXP_SUBSTR(seg,'[0-9]+',1,2))>=2000);)";
-    QList<QVariantMap> dpKeys = m_dmDatabase->readTableDataForSqlOrder(sql);
-    for(QVariantMap keys : dpKeys)
-    {
-        QMap<QString, QString> mapTemp;
-        QString TZCSXH = keys["TZCSXH"].toString();
-        mapTemp[PrimaryKey] = TZCSXH;
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPTZ where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> TZYSList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(TZYSList.count() > 0)
+#endif
+        QStringList platformEQ;
+        sql = QString("select * from QBZB_GX_PTMBPBTXSBQK WHERE TXSBID = '%1';").arg(MBNM);
+        QList<QVariantMap> GZCSXHList = m_dmDatabase->readTableDataForSqlOrder(sql);
+        for(const QVariantMap& GZCSXHMap:GZCSXHList)
         {
-            QVariantMap map = TZYSList[0];
-            QString TZYS = map["TZYS"].toString();
-            QString FHSL = map["FHSL"].toString();
-            QString TS = map["TS"].toString();
-            QString ZLSJ = map["ZLSJ"].toString();
-            QString ZKB = map["ZKB"].toString();
-            mapTemp["TZYS"] = TZYS;
-            mapTemp["FHSL"] = FHSL;
-            mapTemp["TS"] = TS;
-            mapTemp["ZLSJ"] = ZLSJ;
-            mapTemp["ZKB"] = ZKB;
-        }
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPPLXX where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> TPPLList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(TPPLList.count() > 0)
-        {
-            QString TPPL = TPPLList[0]["TPPL"].toString();
-            mapTemp["TPPL"] = TPPL;
-        }
-
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> TZCSList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        QString TXMBID = TZCSList[0]["TXMBID"].toString();
-        mapTemp["SBID"] = TXMBID;
-        QString TXTZ = TZCSList[0]["TXTZ"].toString();
-        //找不到MBID这条数据就接不下去了
-        if(TZCSList.count() <= 0)
-        {
-            continue;
-        }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_XHSB where SBID='%1';").arg(TXMBID);
-        //信号识别表
-        QList<QVariantMap> XHSBList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(XHSBList.count() > 0)
-        {
-            QVariantMap XHSBMap = XHSBList[0];
-            QString GJDQNM = XHSBMap["GJDQNM"].toString();
-            QString SBXH = XHSBMap["SBXH"].toString();
-            QString SBMC = XHSBMap["SBMC"].toString();
-            QString WXCDNM = XHSBMap["WXCDNM"].toString();
-            QString MBID = XHSBMap["MBID"].toString();
-            mapTemp["GJDQNM"] = GJDQNM;
-            mapTemp["SBXH"] = SBXH;
-            mapTemp["SBMC"] = SBMC;
-            mapTemp["WXCDNM"] = WXCDNM;
-            mapTemp["MBID"] = MBID;
-            sql = QString("select MC FROM KZCSJDB.ZZBZ_S_TY_GJ where GJDQNM='%1';").arg(GJDQNM);
-            //信号识别表
-            QList<QVariantMap> GJDQNMTrans = m_dmDatabase->readTableDataForSqlOrder(sql);
-            if(GJDQNMTrans.count() > 0)
+            QString PTMBID = GZCSXHMap["PTMBID"].toString();
+            sql = QString("select * from KZCSJDB.QBCL_QBZB_DZMB where MBID = '%1';").arg(PTMBID);
+            QList<QVariantMap> PTList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            for(QVariantMap varmap : PTList)
             {
-                mapTemp["GJDQNM"] = GJDQNMTrans[0]["MC"].toString();
+                int DZMBLBNM = varmap["DZMBLBNM"].toInt();
+                QString MBMC = varmap["MBMC"].toString();
+                platformEQ.push_back(MBMC);
+
             }
         }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_DZMB where MBID='%1';").arg(TXMBID);
-        //平台信息
-        QList<QVariantMap> PTXXList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(PTXXList.count() > 0)
-        {
-            QVariantMap PTXXMap = PTXXList[0];
-            QString MBMC = PTXXMap["MBMC"].toString();
-            mapTemp["MBMC"] = MBMC;
-        }
-        dpMap.push_back(mapTemp);
+        paramTemp.otherMsgMap["PlatformEQ"] = platformEQ.join(";");
+
+        dpMap.push_back(paramTemp);
     }
     return dpMap;
 }
-#else
-QList<QMap<QString, QString> > MainWindow::loadTP()
+
+
+QList<RESULT_STU> MainWindow::loadTP()
 {
-    QList<QMap<QString, QString> > tpMap;
+     QList<RESULT_STU> tpMap;
     onConnectDb();
     if (!m_dmDatabase->isConnected())
     {
         qDebug()<<"数据库未连接";
         return tpMap;
     }
-    QString sql = "select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPPLXX;";
-    QList<QVariantMap> TPPLList = m_dmDatabase->readTableDataForSqlOrder(sql);
-    for(QVariantMap TPPLMap : TPPLList)
+    QString sql = "select * FROM KZCSJDB.QBCL_QBZB_DZMB where DZMBLBNM ='156';";
+    QList<QVariantMap> dpKeys = m_dmDatabase->readTableDataForSqlOrder(sql);
+    for(QVariantMap map : dpKeys)
     {
-        QMap<QString, QString> mapTemp;
-        QString TZCSXH = TPPLMap["TZCSXH"].toString();
-        QString TPPL = TPPLMap["TPPL"].toString();
-        mapTemp["Frequency"] = TPPL;
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_TPTZ where TZCSXH='%1';").arg(TZCSXH);
-        QList<QVariantMap> TPTZList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(TPTZList.count() > 0)
-        {
-            QStringList TZYSList = TPTZList[0]["TZYS"].toString().split(",");
-            QString FHSL = TPTZList[0]["FHSL"].toString();
-            QString TZYS;
-            for(QString TZYSVar : TZYSList)
-            {
-                if(TZYS.count() > 0)
-                {
-                    TZYS += ";";
-                }
-                sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_XHTZYS where XHTZYSNM='%1';").arg(TZYSVar);
-                QList<QVariantMap> list = m_dmDatabase->readTableDataForSqlOrder(sql);
-                if(list.count() <= 0)
-                {
-                    TZYS += TZYSVar;
-                    continue;
-                }
-                TZYS += list[0]["ASCDM"].toString();
-            }
-            mapTemp["Modulation"] = TZYS;
-            mapTemp["SymbolRate"] = FHSL;
-        }
-
-        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS where TZCSXH='%1';").arg(TZCSXH);
+        RESULT_STU paramTemp;
+        int DZMBLBNM = map["DZMBLBNM"].toInt();
+        QString MBMC = map["MBMC"].toString();
+        QString MBID = map["MBID"].toString();
+        QString MBNM = map["MBNM"].toString();
+        paramTemp.otherMsgMap["PlatformName"] = MBMC;
+        paramTemp.otherMsgMap[PrimaryKey] = MBID;
+        sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS where TXMBID='%1';").arg(MBID);
         QList<QVariantMap> TZCSList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        QString TXMBID = TZCSList[0]["TXMBID"].toString();
-        mapTemp[PrimaryKey] = TZCSXH;
-        mapTemp["SBID"] = TXMBID;
-        QStringList TXTZList = TZCSList[0]["TXTZ"].toString().split(";");
-        QString MC;
-        for(QString var : TXTZList)
+        QStringList freqs;
+        QStringList TZYSs;
+        QStringList FHSLs;
+        QStringList MCs;
+        bool isDP = false;
+        for(QVariantMap TZCSMap :TZCSList)
         {
-            int TXTZ = var.toInt();
-            sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_CSXTDL where CSXTDLNM='%1';").arg(TXTZ);
-            QList<QVariantMap> CSXTDLNMList = m_dmDatabase->readTableDataForSqlOrder(sql);
-            MC += CSXTDLNMList[0]["MC"].toString();
+            CHARAPARA_STU charaPara;
+            QString TZCSXH = TZCSMap["TZCSXH"].toString();
+            QStringList TXTZList = TZCSMap["TXTZ"].toString().split(";");
+
+
+
+//            mapTemp["TZCSXH"] = TZCSXH;
+            QString sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBPP where TZCSXH = '%1';").arg(TZCSXH);
+            QList<QVariantMap> dpList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            if(dpList.count() > 0)
+            {
+                QString DZBPL = dpList[0]["DZBPL"].toString();
+                freqs.push_back(DZBPL);
+                charaPara.freq = DZBPL;
+            }
+            sql = QString("select * FROM KZCSJDB.QBZB_ZBMB_TXMB_TZCS_DZBTZ where TZCSXH='%1';").arg(TZCSXH);
+            QList<QVariantMap> DZBTZList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            if(DZBTZList.count() > 0)
+            {
+                QStringList TZYSList = DZBTZList[0]["TZYS"].toString().split(",");
+                QString FHSL = DZBTZList[0]["FHSL"].toString();
+                FHSLs.push_back(FHSL);
+//                QString TZYS;
+                for(QString TZYSVar : TZYSList)
+                {
+//                    if(TZYS.count() > 0)
+//                    {
+//                        TZYS += ";";
+//                    }
+                    sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_XHTZYS where XHTZYSNM='%1';").arg(TZYSVar);
+                    QList<QVariantMap> list = m_dmDatabase->readTableDataForSqlOrder(sql);
+                    if(list.count() <= 0)
+                    {
+//                        TZYS += TZYSVar;
+                        TZYSs.push_back(TZYSVar);
+                        charaPara.Modulation.push_back(TZYSVar);
+                        continue;
+                    }
+//                    TZYS += list[0]["ASCDM"].toString();
+                    QString TZYS = list[0]["ASCDM"].toString();
+                    TZYSs.push_back(TZYS);
+                    charaPara.Modulation.push_back(TZYS);
+                }
+
+            }
+//            QString MC;
+            for(QString var : TXTZList)
+            {
+                int TXTZ = var.toInt();
+                if(TXTZ == 1)
+                {
+                    isDP = true;
+                }
+                sql = QString("select * FROM KZCSJDB.ZZBZ_S_XZ_ZJZB_CSXTDL where CSXTDLNM='%1';").arg(TXTZ);
+                QList<QVariantMap> CSXTDLNMList = m_dmDatabase->readTableDataForSqlOrder(sql);
+                QString mc = CSXTDLNMList[0]["MC"].toString();
+                MCs.push_back(mc);
+                charaPara.characterFeature = mc;
+            }
         }
-        mapTemp["CharacterFeature"] = MC;
-        //找不到MBID这条数据就接不下去了
-        if(TZCSList.count() <= 0)
+        if(!isDP)
         {
             continue;
         }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_XHSB where SBID='%1';").arg(TXMBID);
+        paramTemp.otherMsgMap["CharacterFeature"] = MCs.join(";");
+        paramTemp.otherMsgMap["Frequency"] = freqs.join(";");
+        paramTemp.otherMsgMap["Modulation"] = TZYSs.join(";");
+        paramTemp.otherMsgMap["SymbolRate"] = FHSLs.join(";");
+
+        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_XHSB where SBID='%1';").arg(MBID);
         //信号识别表
         QList<QVariantMap> XHSBList = m_dmDatabase->readTableDataForSqlOrder(sql);
         if(XHSBList.count() > 0)
@@ -768,37 +728,27 @@ QList<QMap<QString, QString> > MainWindow::loadTP()
             QString SBXH = XHSBMap["SBXH"].toString();
             int WXCDNM = XHSBMap["WXCDNM"].toInt();
             QString strWXCDNM = QString("%1").arg(WXCDNM,2,10,QChar('0'));
-            mapTemp["Contry"] = GJDQNM;
-            mapTemp["DeviceName"] = SBXH;
-            mapTemp["ThreatLevel"] = strWXCDNM;
+            paramTemp.otherMsgMap["Contry"] = GJDQNM;
+            paramTemp.otherMsgMap["DeviceName"] = SBXH;
+            paramTemp.otherMsgMap["ThreatLevel"] = strWXCDNM;
             sql = QString("select MC FROM KZCSJDB.ZZBZ_S_TY_GJ where GJDQNM='%1';").arg(GJDQNM);
             //信号识别表
             QList<QVariantMap> GJDQNMTrans = m_dmDatabase->readTableDataForSqlOrder(sql);
             if(GJDQNMTrans.count() > 0)
             {
-                mapTemp["Contry"] = GJDQNMTrans[0]["MC"].toString();
+                paramTemp.otherMsgMap["Contry"] = GJDQNMTrans[0]["MC"].toString();
             }
             sql = QString("select MC FROM KZCSJDB.ZZBZ_S_XZ_QB_MBWXCD where WXCDNM='%1';").arg(strWXCDNM);
             QList<QVariantMap> WXCDList = m_dmDatabase->readTableDataForSqlOrder(sql);
             if(WXCDList.count() > 0)
             {
-                mapTemp["ThreatLevel"] = WXCDList[0]["MC"].toString();
+                paramTemp.otherMsgMap["ThreatLevel"] = WXCDList[0]["MC"].toString();
             }
         }
-        sql = QString("select * FROM KZCSJDB.QBCL_QBZB_DZMB where MBID='%1';").arg(TXMBID);
-        //平台信息
-        QList<QVariantMap> PTXXList = m_dmDatabase->readTableDataForSqlOrder(sql);
-        if(PTXXList.count() > 0)
-        {
-            QVariantMap PTXXMap = PTXXList[0];
-            int DZMBLBNM = PTXXMap["DZMBLBNM"].toInt();
-            QString MBMC = PTXXMap["MBMC"].toString();
-            mapTemp["Platform"] += getStr(DZMBLBNM,MBMC);
-
-        }
-
-        sql = QString("select * from QBZB_ZBMB_TXMB_GZCS        where TXMBID = '%1';").arg(TXMBID);
+#if 0
+        sql = QString("select * from QBZB_ZBMB_TXMB_GZCS        where TXMBID = '%1';").arg(MBID);
         QList<QVariantMap> GZCSXHList = m_dmDatabase->readTableDataForSqlOrder(sql);
+        QStringList platformEQ;
         for(QVariantMap map : GZCSXHList)
         {
             QString GZCSXH = map["GZCSXH"].toString();
@@ -811,24 +761,42 @@ QList<QMap<QString, QString> > MainWindow::loadTP()
                 {
                     continue;
                 }
+                qDebug()<<"MBID:"<<PTMBID;
                 sql = QString("select * from KZCSJDB.QBCL_QBZB_DZMB where MBID = '%1';").arg(PTMBID);
                 QList<QVariantMap> PTList = m_dmDatabase->readTableDataForSqlOrder(sql);
                 for(QVariantMap varmap : PTList)
                 {
                     int DZMBLBNM = varmap["DZMBLBNM"].toInt();
                     QString MBMC = varmap["MBMC"].toString();
-                    mapTemp["Platform"] += getStr(DZMBLBNM,MBMC);
+                    platformEQ.push_back(MBMC);
+
                 }
             }
         }
+#endif
+        QStringList platformEQ;
+        sql = QString("select * from QBZB_GX_PTMBPBTXSBQK WHERE TXSBID = '%1';").arg(MBNM);
+        QList<QVariantMap> GZCSXHList = m_dmDatabase->readTableDataForSqlOrder(sql);
+        for(const QVariantMap& GZCSXHMap:GZCSXHList)
+        {
+            QString PTMBID = GZCSXHMap["PTMBID"].toString();
+            sql = QString("select * from KZCSJDB.QBCL_QBZB_DZMB where MBID = '%1';").arg(PTMBID);
+            QList<QVariantMap> PTList = m_dmDatabase->readTableDataForSqlOrder(sql);
+            for(QVariantMap varmap : PTList)
+            {
+                int DZMBLBNM = varmap["DZMBLBNM"].toInt();
+                QString MBMC = varmap["MBMC"].toString();
+                platformEQ.push_back(MBMC);
 
+            }
+        }
+        paramTemp.otherMsgMap["PlatformEQ"] = platformEQ.join(";");
 
-        tpMap.push_back(mapTemp);
-
+        tpMap.push_back(paramTemp);
     }
     return tpMap;
 }
-#endif
+
 void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
 {
     //    table->clearContents();
@@ -889,10 +857,10 @@ void MainWindow::updteTable(QString localDBTableName,  QTableWidget *table)
 
 void MainWindow::onAddLine(QTableWidget *table, const QString &tableName, QString key)
 {
-    QList<QMap<QString,QString> > mapList;
+    QList<RESULT_STU> mapList;
     key = addLine(table,key);
-    QMap<QString,QString> map;
-    map.insert(PrimaryKey,key);
+    RESULT_STU map;
+    map.otherMsgMap.insert(PrimaryKey,key);
     mapList.push_back(map);
     saveLocalData(tableName,mapList);
     return;
@@ -930,7 +898,6 @@ void MainWindow::onRemoveLine(QTableWidget *table, const QString &tableName)
         if(item)
         {
             m_localDatabase->dropData(tableName,PrimaryKey,QStringList()<<item->data(Qt::UserRole).toString());
-            m_localDatabase->dropData(subTableName(tableName),"TZCSXH",QStringList()<<item->data(Qt::UserRole).toString());
         }
         table->removeRow(row);
 
@@ -958,9 +925,6 @@ void MainWindow::onUpdateTable(int row, int column, const QString &oldVal, const
     pkValues.insert(PrimaryKey,key);
     if (m_localDatabase->updateCell(tableName, columnName, pkValues, value)) {
         qDebug() << "单元格数据已保存:" << tableName << columnName << pkValues << value;
-        if (columnName == "Frequency" || columnName == "Modulation" || columnName == "SymbolRate") {
-            syncSubTableRow(tableName, key);
-        }
     } else {
         QMessageBox::warning(this, "警告", "保存失败: " + m_localDatabase->lastError());
         item->setText(oldVal);
@@ -1034,101 +998,16 @@ QMap<int, QStringList> MainWindow::parseStrToMapList(const QString &src)
     return result;
 }
 
-QString MainWindow::subTableName(const QString &mainTableName)
-{
-    return mainTableName + "_SUB";
-}
-
 void MainWindow::createSubTables()
 {
     QStringList subCols;
-    subCols << "TZCSXH" << "Frequency" << "Modulation" << "SymbolRate";
-    QStringList subPks;
-    subPks << "TZCSXH" << "Frequency" << "Modulation" << "SymbolRate";
+    subCols <<PrimaryKey<< "Frequency"<<"Modulation"<<"SymbolRate";
+    m_localDatabase->createTable(subTableName("DP_MSG"),subCols);
+    m_localDatabase->createTable(subTableName("TP_MSG"),subCols);
 
-    m_localDatabase->createTable(subTableName("DP_MSG"), subCols, subPks);
-    m_localDatabase->createTable(subTableName("TP_MSG"), subCols, subPks);
 }
 
-void MainWindow::syncSubTable(const QString &mainTableName, const QList<QMap<QString,QString>> &data)
+QString MainWindow::subTableName(const QString& name)
 {
-    QString subTable = subTableName(mainTableName);
-
-    // 清空子表
-    m_localDatabase->dropData(subTable);
-
-    if (data.isEmpty()) {
-        return;
-    }
-
-    // 按 ; 拆分 Frequency / Modulation / SymbolRate，逐行写入子表
-    QString insertSql = QString("INSERT INTO %1 (TZCSXH, Frequency, Modulation, SymbolRate) "
-                                "VALUES (?, ?, ?, ?)").arg(subTable);
-
-    for (const QMap<QString,QString> &row : data) {
-        QString tzcsxh = row.value(PrimaryKey);
-        if (tzcsxh.isEmpty()) {
-            continue;
-        }
-
-        QStringList freqs = row.value("Frequency").split(";");
-        QStringList mods  = row.value("Modulation").split(";");
-        QStringList syms  = row.value("SymbolRate").split(";");
-
-        int maxCount = qMax(qMax(freqs.size(), mods.size()), syms.size());
-        if (maxCount == 0) {
-            m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << "" << "" << "");
-            continue;
-        }
-
-        for (int i = 0; i < maxCount; ++i) {
-            QString freq = (i < freqs.size()) ? freqs[i].trimmed() : "";
-            QString mod  = (i < mods.size())  ? mods[i].trimmed()  : "";
-            QString sym  = (i < syms.size())  ? syms[i].trimmed()  : "";
-            m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << freq << mod << sym);
-        }
-    }
-
-    qDebug() << "子表同步完成:" << subTable;
-}
-
-void MainWindow::syncSubTableRow(const QString &mainTableName, const QString &tzcsxh)
-{
-    QString subTable = subTableName(mainTableName);
-
-    if (tzcsxh.isEmpty()) {
-        return;
-    }
-
-    // 删除该 TZCSXH 的旧子表记录
-    m_localDatabase->dropData(subTable, "TZCSXH", QStringList() << tzcsxh);
-
-    // 从主表读取当前行数据
-    QString sql = QString("SELECT * FROM %1 WHERE %2 = ?").arg(mainTableName).arg(PrimaryKey);
-    QList<QVariantMap> rows = m_localDatabase->queryRows(sql, QVariantList() << tzcsxh);
-    if (rows.isEmpty()) {
-        return;
-    }
-
-    QVariantMap row = rows[0];
-    QStringList freqs = row.value("Frequency").toString().split(";");
-    QStringList mods  = row.value("Modulation").toString().split(";");
-    QStringList syms  = row.value("SymbolRate").toString().split(";");
-
-    int maxCount = qMax(qMax(freqs.size(), mods.size()), syms.size());
-    if (maxCount == 0) {
-        return;
-    }
-
-    QString insertSql = QString("INSERT INTO %1 (TZCSXH, Frequency, Modulation, SymbolRate) "
-                                "VALUES (?, ?, ?, ?)").arg(subTable);
-
-    for (int i = 0; i < maxCount; ++i) {
-        QString freq = (i < freqs.size()) ? freqs[i].trimmed() : "";
-        QString mod  = (i < mods.size())  ? mods[i].trimmed()  : "";
-        QString sym  = (i < syms.size())  ? syms[i].trimmed()  : "";
-        m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << freq << mod << sym);
-    }
-
-    qDebug() << "子表行级同步完成:" << subTable << "TZCSXH:" << tzcsxh;
+    return name + "_SUB";
 }
