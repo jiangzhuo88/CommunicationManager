@@ -52,6 +52,11 @@ private:
     QString getStr(int number,QString str);
     QMap<int, QStringList> parseStrToMapList(const QString& src);
 
+    static QString subTableName(const QString& mainTableName);
+    void createSubTables();
+    void syncSubTable(const QString& mainTableName, const QList<QMap<QString,QString>>& data);
+    void syncSubTableRow(const QString& mainTableName, const QString& tzcsxh);
+
 private:
     // 顶部Ribbon栏
     QWidget* m_ribbonBar;

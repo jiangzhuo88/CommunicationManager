@@ -81,6 +81,9 @@ void MainWindow::btnImportClicked()
     saveLocalData("DP_MSG",dpListTemp);
     saveLocalData("TP_MSG",tpListTemp);
 
+    syncSubTable("DP_MSG",dpListTemp);
+    syncSubTable("TP_MSG",tpListTemp);
+
     updteTable("DP_MSG",m_DPWidget->getTableWidget());
     updteTable("TP_MSG",m_TPWidget->getTableWidget());
     ipc->publish("REFRESH");
@@ -98,6 +101,8 @@ void MainWindow::btnClearClicked()
     m_TPWidget->clear();
     m_localDatabase->dropData("DP_MSG");
     m_localDatabase->dropData("TP_MSG");
+    m_localDatabase->dropData(subTableName("DP_MSG"));
+    m_localDatabase->dropData(subTableName("TP_MSG"));
     ipc->publish("REFRESH");
 }
 
@@ -321,6 +326,7 @@ void MainWindow::loadLocalData()
     }
     m_localDatabase->createTable("DP_MSG",m_DPWidget->getTableColHeaders()<<PrimaryKey);
     m_localDatabase->createTable("TP_MSG",m_TPWidget->getTableColHeaders()<<PrimaryKey);
+    createSubTables();
 
     //    QStringList tables = m_localDatabase->getTableNames();
     loadTableData("TP_MSG",m_TPWidget->getTableWidget());
@@ -924,6 +930,7 @@ void MainWindow::onRemoveLine(QTableWidget *table, const QString &tableName)
         if(item)
         {
             m_localDatabase->dropData(tableName,PrimaryKey,QStringList()<<item->data(Qt::UserRole).toString());
+            m_localDatabase->dropData(subTableName(tableName),"TZCSXH",QStringList()<<item->data(Qt::UserRole).toString());
         }
         table->removeRow(row);
 
@@ -951,6 +958,9 @@ void MainWindow::onUpdateTable(int row, int column, const QString &oldVal, const
     pkValues.insert(PrimaryKey,key);
     if (m_localDatabase->updateCell(tableName, columnName, pkValues, value)) {
         qDebug() << "单元格数据已保存:" << tableName << columnName << pkValues << value;
+        if (columnName == "Frequency" || columnName == "Modulation" || columnName == "SymbolRate") {
+            syncSubTableRow(tableName, key);
+        }
     } else {
         QMessageBox::warning(this, "警告", "保存失败: " + m_localDatabase->lastError());
         item->setText(oldVal);
@@ -1022,4 +1032,103 @@ QMap<int, QStringList> MainWindow::parseStrToMapList(const QString &src)
         result[keyStr].push_back(val);
     }
     return result;
+}
+
+QString MainWindow::subTableName(const QString &mainTableName)
+{
+    return mainTableName + "_SUB";
+}
+
+void MainWindow::createSubTables()
+{
+    QStringList subCols;
+    subCols << "TZCSXH" << "Frequency" << "Modulation" << "SymbolRate";
+    QStringList subPks;
+    subPks << "TZCSXH" << "Frequency" << "Modulation" << "SymbolRate";
+
+    m_localDatabase->createTable(subTableName("DP_MSG"), subCols, subPks);
+    m_localDatabase->createTable(subTableName("TP_MSG"), subCols, subPks);
+}
+
+void MainWindow::syncSubTable(const QString &mainTableName, const QList<QMap<QString,QString>> &data)
+{
+    QString subTable = subTableName(mainTableName);
+
+    // 清空子表
+    m_localDatabase->dropData(subTable);
+
+    if (data.isEmpty()) {
+        return;
+    }
+
+    // 按 ; 拆分 Frequency / Modulation / SymbolRate，逐行写入子表
+    QString insertSql = QString("INSERT INTO %1 (TZCSXH, Frequency, Modulation, SymbolRate) "
+                                "VALUES (?, ?, ?, ?)").arg(subTable);
+
+    for (const QMap<QString,QString> &row : data) {
+        QString tzcsxh = row.value(PrimaryKey);
+        if (tzcsxh.isEmpty()) {
+            continue;
+        }
+
+        QStringList freqs = row.value("Frequency").split(";");
+        QStringList mods  = row.value("Modulation").split(";");
+        QStringList syms  = row.value("SymbolRate").split(";");
+
+        int maxCount = qMax(qMax(freqs.size(), mods.size()), syms.size());
+        if (maxCount == 0) {
+            m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << "" << "" << "");
+            continue;
+        }
+
+        for (int i = 0; i < maxCount; ++i) {
+            QString freq = (i < freqs.size()) ? freqs[i].trimmed() : "";
+            QString mod  = (i < mods.size())  ? mods[i].trimmed()  : "";
+            QString sym  = (i < syms.size())  ? syms[i].trimmed()  : "";
+            m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << freq << mod << sym);
+        }
+    }
+
+    qDebug() << "子表同步完成:" << subTable;
+}
+
+void MainWindow::syncSubTableRow(const QString &mainTableName, const QString &tzcsxh)
+{
+    QString subTable = subTableName(mainTableName);
+
+    if (tzcsxh.isEmpty()) {
+        return;
+    }
+
+    // 删除该 TZCSXH 的旧子表记录
+    m_localDatabase->dropData(subTable, "TZCSXH", QStringList() << tzcsxh);
+
+    // 从主表读取当前行数据
+    QString sql = QString("SELECT * FROM %1 WHERE %2 = ?").arg(mainTableName).arg(PrimaryKey);
+    QList<QVariantMap> rows = m_localDatabase->queryRows(sql, QVariantList() << tzcsxh);
+    if (rows.isEmpty()) {
+        return;
+    }
+
+    QVariantMap row = rows[0];
+    QStringList freqs = row.value("Frequency").toString().split(";");
+    QStringList mods  = row.value("Modulation").toString().split(";");
+    QStringList syms  = row.value("SymbolRate").toString().split(";");
+
+    int maxCount = qMax(qMax(freqs.size(), mods.size()), syms.size());
+    if (maxCount == 0) {
+        return;
+    }
+
+    QString insertSql = QString("INSERT INTO %1 (TZCSXH, Frequency, Modulation, SymbolRate) "
+                                "VALUES (?, ?, ?, ?)").arg(subTable);
+
+    for (int i = 0; i < maxCount; ++i) {
+        QString freq = (i < freqs.size()) ? freqs[i].trimmed() : "";
+        QString mod  = (i < mods.size())  ? mods[i].trimmed()  : "";
+        QString sym  = (i < syms.size())  ? syms[i].trimmed()  : "";
+        m_localDatabase->executeSql(insertSql, QVariantList() << tzcsxh << freq << mod << sym);
+    }
+
+    qDebug() << "子表行级同步完成:" << subTable << "TZCSXH:" << tzcsxh;
 }

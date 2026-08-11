@@ -501,6 +501,61 @@ QList<QVariantMap> LocalDatabase::getTableData(const QString &tableName)
     return data;
 }
 
+QList<QVariantMap> LocalDatabase::queryRows(const QString &sql, const QVariantList &bindValues)
+{
+    QList<QVariantMap> result;
+
+    if (!m_database.isOpen()) {
+        m_lastError = "数据库未打开";
+        return result;
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(sql);
+    for (const QVariant &val : bindValues) {
+        query.addBindValue(val);
+    }
+
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        qWarning() << "查询失败:" << m_lastError << " SQL:" << sql;
+        return result;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        QSqlRecord record = query.record();
+        for (int i = 0; i < record.count(); ++i) {
+            row.insert(record.fieldName(i), record.value(i));
+        }
+        result << row;
+    }
+
+    return result;
+}
+
+bool LocalDatabase::executeSql(const QString &sql, const QVariantList &bindValues)
+{
+    if (!m_database.isOpen()) {
+        m_lastError = "数据库未打开";
+        return false;
+    }
+
+    QSqlQuery query(m_database);
+    query.prepare(sql);
+    for (const QVariant &val : bindValues) {
+        query.addBindValue(val);
+    }
+
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        qWarning() << "SQL执行失败:" << m_lastError << " SQL:" << sql;
+        return false;
+    }
+
+    return true;
+}
+
 QStringList LocalDatabase::getTableColumns(const QString &tableName)
 {
     QStringList columns;
