@@ -28,6 +28,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_TPWidget, &CenterWidget::userCellEdited,[this](int row,int column,const QString& oldVal,const QString& newVal){
         onUpdateTable(row,column,oldVal,newVal,m_TPWidget->getTableWidget(),"TP_MSG");
     });
+    connect(m_DPWidget->getTableWidget(), &QTableWidget::cellDoubleClicked,[this](int row,int){
+        onRowDoubleClicked(row, m_DPWidget->getTableWidget(), "DP_MSG");
+    });
+    connect(m_TPWidget->getTableWidget(), &QTableWidget::cellDoubleClicked,[this](int row,int){
+        onRowDoubleClicked(row, m_TPWidget->getTableWidget(), "TP_MSG");
+    });
 }
 
 void MainWindow::setCurrentUser(const QString &userName, UserStore::Role role)
@@ -1010,4 +1016,27 @@ void MainWindow::createSubTables()
 QString MainWindow::subTableName(const QString& name)
 {
     return name + "_SUB";
+}
+
+void MainWindow::onRowDoubleClicked(int row, QTableWidget* table, const QString& tableName)
+{
+    QTableWidgetItem* item = table->item(row, 0);
+    if (!item) {
+        return;
+    }
+    QString pkValue = item->data(Qt::UserRole).toString();
+    if (pkValue.isEmpty()) {
+        return;
+    }
+
+    RowDetailDialog dlg(tableName, pkValue, m_localDatabase, this);
+    if (dialogExec(&dlg) == QDialog::Accepted) {
+        // 刷新主界面表格（仅刷新该表）
+        if (tableName == "DP_MSG") {
+            updteTable("DP_MSG", m_DPWidget->getTableWidget());
+        } else if (tableName == "TP_MSG") {
+            updteTable("TP_MSG", m_TPWidget->getTableWidget());
+        }
+        ipc->publish("REFRESH");
+    }
 }

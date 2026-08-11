@@ -16,6 +16,7 @@
 #include "dmdatabase.h"
 #include "qt_ipcnotify.h"
 #include "UserStore.h"
+#include "RowDetailDialog.h"
 struct CHARAPARA_STU
 {
     QString characterFeature;
@@ -62,6 +63,7 @@ private:
     void onRemoveLine(QTableWidget* table,const QString& tableName);
     void onUpdateTable(int row, int column,const QString& oldVal,const QString& newVal, QTableWidget* tableWidget, const QString& tableName);
     void onPasteTable(CenterWidget* cenWidget,const QString& tableName);
+    void onRowDoubleClicked(int row, QTableWidget* table, const QString& tableName);
     QString getStr(int number,QString str);
     QMap<int, QStringList> parseStrToMapList(const QString& src);
     void createSubTables();

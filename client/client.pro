@@ -42,7 +42,8 @@ SOURCES += \
     CFramelessWindowBase.cpp \
     CDialogBase.cpp \
     ImportDataDialog.cpp \
-    qt_ipcnotify.cpp
+    qt_ipcnotify.cpp \
+    RowDetailDialog.cpp
 
 RESOURCES += \
     resource.qrc
@@ -68,4 +69,5 @@ HEADERS += \
     CFramelessWindowBase.h \
     CDialogBase.h \
     ImportDataDialog.h \
-    qt_ipcnotify.h
+    qt_ipcnotify.h \
+    RowDetailDialog.h
